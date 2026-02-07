@@ -1,0 +1,201 @@
+id,sku_code,name,category,sub_category,mrp,distributor_price,margin_pct,pack_size,shelf_life_days,is_focus
+P001,BIS-PG-100,Parle-G Glucose Biscuit 100g,Biscuits,Glucose,10.00,8.20,18.00,100g,180,true
+P002,BIS-PG-250,Parle-G Glucose Biscuit 250g,Biscuits,Glucose,25.00,20.50,18.00,250g,180,true
+P003,BIS-PG-800,Parle-G Glucose Biscuit 800g,Biscuits,Glucose,60.00,49.20,18.00,800g,180,false
+P004,BIS-BGD-150,Britannia Good Day Cashew 150g,Biscuits,Cookies,40.00,33.20,17.00,150g,270,true
+P005,BIS-BGD-75,Britannia Good Day Butter 75g,Biscuits,Cookies,20.00,16.60,17.00,75g,270,false
+P006,BIS-BMB-100,Britannia Marie Gold 100g,Biscuits,Marie,20.00,16.40,18.00,100g,270,false
+P007,BIS-BMB-250,Britannia Marie Gold 250g,Biscuits,Marie,42.00,34.44,18.00,250g,270,true
+P008,BIS-SUN-150,Sunfeast Dark Fantasy 150g,Biscuits,Cream,45.00,37.35,17.00,150g,240,true
+P009,BIS-SUN-75,Sunfeast Dark Fantasy 75g,Biscuits,Cream,25.00,20.75,17.00,75g,240,false
+P010,BIS-ORO-120,Cadbury Oreo Original 120g,Biscuits,Cream,30.00,24.60,18.00,120g,300,true
+P011,BIS-HAD-200,Parle Hide and Seek 200g,Biscuits,Cookies,55.00,45.10,18.00,200g,270,false
+P012,BIS-KRK-200,Parle Krackjack 200g,Biscuits,Crackers,30.00,24.60,18.00,200g,240,false
+P013,BIS-5050-150,Britannia 50-50 Maska Chaska 150g,Biscuits,Crackers,25.00,20.75,17.00,150g,240,false
+P014,BIS-MOM-100,Sunfeast Mom's Magic 100g,Biscuits,Cookies,20.00,16.40,18.00,100g,270,false
+P015,BIS-TFR-150,Britannia Tiger Krunch 150g,Biscuits,Glucose,20.00,16.40,18.00,150g,210,false
+P016,BIS-JMJ-100,Parle Jim Jam 100g,Biscuits,Cream,20.00,16.40,18.00,100g,240,false
+P017,BIS-MIL-100,Britannia Milk Bikis 100g,Biscuits,Milk,15.00,12.30,18.00,100g,270,false
+P018,BIS-NIC-150,Britannia NicNac 150g,Biscuits,Crackers,30.00,24.60,18.00,150g,240,false
+P019,BIS-BRB-100,Britannia Bourbon 100g,Biscuits,Cream,25.00,20.50,18.00,100g,270,false
+P020,BIS-LTF-100,Britannia Little Hearts 100g,Biscuits,Cookies,20.00,16.60,17.00,100g,240,false
+P021,SNK-LAY-52,Lay's Classic Salted 52g,Snacks,Chips,20.00,16.00,20.00,52g,120,true
+P022,SNK-LAY-90,Lay's Magic Masala 90g,Snacks,Chips,30.00,24.00,20.00,90g,120,true
+P023,SNK-LAY-35,Lay's American Style Cream & Onion 35g,Snacks,Chips,10.00,8.00,20.00,35g,120,false
+P024,SNK-KUR-85,Kurkure Masala Munch 85g,Snacks,Extruded,20.00,16.00,20.00,85g,120,true
+P025,SNK-KUR-40,Kurkure Chilli Chatka 40g,Snacks,Extruded,10.00,8.00,20.00,40g,120,false
+P026,SNK-HLD-200,Haldiram's Bhujia 200g,Snacks,Namkeen,70.00,57.40,18.00,200g,180,true
+P027,SNK-HLD-400,Haldiram's Aloo Bhujia 400g,Snacks,Namkeen,120.00,98.40,18.00,400g,180,false
+P028,SNK-HLD-150,Haldiram's Moong Dal 150g,Snacks,Namkeen,55.00,45.10,18.00,150g,180,false
+P029,SNK-BNG-60,Bingo Mad Angles 60g,Snacks,Chips,20.00,16.00,20.00,60g,120,false
+P030,SNK-BNG-90,Bingo Tedhe Medhe 90g,Snacks,Extruded,20.00,16.00,20.00,90g,120,false
+P031,SNK-ACT-110,Act II Classic Salted Popcorn 110g,Snacks,Popcorn,40.00,32.80,18.00,110g,150,false
+P032,SNK-HLD-1K,Haldiram's Sev Bhujia 1kg,Snacks,Namkeen,280.00,229.60,18.00,1kg,180,false
+P033,SNK-BKN-150,Bikano Aloo Bhujia 150g,Snacks,Namkeen,50.00,41.00,18.00,150g,150,false
+P034,SNK-DRT-50,Doritos Sweet Chilli 50g,Snacks,Chips,30.00,24.00,20.00,50g,120,false
+P035,SNK-PRI-60,Pringles Original 60g,Snacks,Chips,99.00,79.20,20.00,60g,365,false
+P036,SNK-ALV-30,Parle Aliva Salted Thin 30g,Snacks,Crackers,10.00,8.20,18.00,30g,120,false
+P037,SNK-UNC-50,Uncle Chipps Spicy Treat 50g,Snacks,Chips,20.00,16.00,20.00,50g,120,false
+P038,SNK-TOO-60,Too Yumm Multigrain Chips 60g,Snacks,Healthy,30.00,24.00,20.00,60g,120,false
+P039,SNK-HLD-350,Haldiram's Navratan Mix 350g,Snacks,Namkeen,150.00,123.00,18.00,350g,180,false
+P040,SNK-KUR-150,Kurkure Puffcorn 150g,Snacks,Extruded,30.00,24.00,20.00,150g,120,false
+P041,BEV-CCL-300,Coca-Cola 300ml,Beverages,Carbonated,20.00,16.40,18.00,300ml,180,true
+P042,BEV-CCL-750,Coca-Cola 750ml,Beverages,Carbonated,40.00,32.80,18.00,750ml,180,true
+P043,BEV-CCL-2L,Coca-Cola 2L,Beverages,Carbonated,85.00,69.70,18.00,2L,180,false
+P044,BEV-THU-250,Thums Up 250ml,Beverages,Carbonated,15.00,12.30,18.00,250ml,180,false
+P045,BEV-THU-750,Thums Up 750ml,Beverages,Carbonated,40.00,32.80,18.00,750ml,180,false
+P046,BEV-SPR-300,Sprite 300ml,Beverages,Carbonated,20.00,16.40,18.00,300ml,180,false
+P047,BEV-PEP-300,Pepsi 300ml,Beverages,Carbonated,20.00,16.40,18.00,300ml,180,true
+P048,BEV-PEP-750,Pepsi 750ml,Beverages,Carbonated,40.00,32.80,18.00,750ml,180,false
+P049,BEV-MZA-250,Maaza Mango 250ml,Beverages,Juice,20.00,16.40,18.00,250ml,120,true
+P050,BEV-MZA-600,Maaza Mango 600ml,Beverages,Juice,35.00,28.70,18.00,600ml,120,false
+P051,BEV-FRT-250,Frooti Mango 250ml,Beverages,Juice,15.00,12.30,18.00,250ml,120,false
+P052,BEV-SLC-250,Slice Mango 250ml,Beverages,Juice,20.00,16.40,18.00,250ml,120,false
+P053,BEV-RBL-250,Red Bull Energy 250ml,Beverages,Energy,125.00,100.00,20.00,250ml,365,false
+P054,BEV-MND-250,Minute Maid Pulpy Orange 250ml,Beverages,Juice,25.00,20.50,18.00,250ml,120,false
+P055,BEV-PPR-300,Paper Boat Aam Panna 300ml,Beverages,Traditional,30.00,24.60,18.00,300ml,90,false
+P056,BEV-LMN-350,Limca 350ml,Beverages,Carbonated,25.00,20.50,18.00,350ml,180,false
+P057,BEV-BIS-250,Bisleri Water 1L,Beverages,Water,20.00,15.00,25.00,1L,365,false
+P058,BEV-KIN-1L,Kinley Water 1L,Beverages,Water,20.00,15.00,25.00,1L,365,false
+P059,BEV-RLT-200,Real Litchi Juice 200ml,Beverages,Juice,25.00,20.50,18.00,200ml,120,false
+P060,BEV-TTG-250,Tata Tea Gold Leaf 250g,Beverages,Tea,145.00,118.90,18.00,250g,365,true
+P061,PC-CLI-175,Clinic Plus Strong & Long 175ml,Personal Care,Shampoo,80.00,64.00,20.00,175ml,730,true
+P062,PC-CLI-80,Clinic Plus Strong & Long 80ml,Personal Care,Shampoo,42.00,33.60,20.00,80ml,730,false
+P063,PC-HDN-180,Head & Shoulders Smooth & Silky 180ml,Personal Care,Shampoo,190.00,152.00,20.00,180ml,730,false
+P064,PC-DVE-175,Dove Daily Shine Shampoo 175ml,Personal Care,Shampoo,145.00,116.00,20.00,175ml,730,true
+P065,PC-SUN-100,Sunsilk Black Shine 180ml,Personal Care,Shampoo,120.00,96.00,20.00,180ml,730,false
+P066,PC-COL-100,Colgate Strong Teeth 100g,Personal Care,Toothpaste,52.00,42.64,18.00,100g,730,true
+P067,PC-COL-200,Colgate Strong Teeth 200g,Personal Care,Toothpaste,93.00,76.26,18.00,200g,730,true
+P068,PC-COL-MAX,Colgate MaxFresh 150g,Personal Care,Toothpaste,99.00,81.18,18.00,150g,730,false
+P069,PC-PEP-150,Pepsodent Germi Check 150g,Personal Care,Toothpaste,72.00,59.04,18.00,150g,730,false
+P070,PC-SEN-80,Sensodyne Fresh Gel 80g,Personal Care,Toothpaste,145.00,116.00,20.00,80g,730,false
+P071,PC-LUX-100,Lux Soft Touch Soap 100g,Personal Care,Soap,35.00,28.70,18.00,100g,730,false
+P072,PC-LUX-150,Lux Soft Glow Soap 150g,Personal Care,Soap,52.00,42.64,18.00,150g,730,false
+P073,PC-DVS-100,Dove Cream Beauty Bar 100g,Personal Care,Soap,65.00,52.00,20.00,100g,730,true
+P074,PC-LFB-125,Lifebuoy Total 10 Soap 125g,Personal Care,Soap,38.00,31.16,18.00,125g,730,false
+P075,PC-GDR-100,Godrej No.1 Sandal & Turmeric 100g,Personal Care,Soap,25.00,20.50,18.00,100g,730,false
+P076,PC-NVA-200,Nivea Body Lotion 200ml,Personal Care,Skin Care,199.00,159.20,20.00,200ml,730,false
+P077,PC-VSL-100,Vaseline Intensive Care 100ml,Personal Care,Skin Care,120.00,96.00,20.00,100ml,730,false
+P078,PC-PON-100,Pond's Cold Cream 100ml,Personal Care,Skin Care,160.00,128.00,20.00,100ml,730,false
+P079,PC-FAL-100,Fair & Lovely (Glow & Lovely) 50g,Personal Care,Skin Care,99.00,79.20,20.00,50g,730,false
+P080,PC-DTL-200,Dettol Handwash Original 200ml,Personal Care,Hygiene,59.00,47.20,20.00,200ml,730,false
+P081,HC-SRF-500,Surf Excel Easy Wash 500g,Home Care,Detergent,60.00,49.20,18.00,500g,730,true
+P082,HC-SRF-1K,Surf Excel Easy Wash 1kg,Home Care,Detergent,110.00,90.20,18.00,1kg,730,true
+P083,HC-SRF-QK,Surf Excel Quick Wash 500g,Home Care,Detergent,95.00,77.90,18.00,500g,730,false
+P084,HC-TID-500,Tide Plus Jasmine & Rose 500g,Home Care,Detergent,50.00,41.00,18.00,500g,730,false
+P085,HC-TID-1K,Tide Plus Extra Power 1kg,Home Care,Detergent,99.00,81.18,18.00,1kg,730,false
+P086,HC-RIN-500,Rin Advanced 500g,Home Care,Detergent,40.00,32.80,18.00,500g,730,false
+P087,HC-VIM-300,Vim Dishwash Bar 300g,Home Care,Dishwash,25.00,20.50,18.00,300g,730,true
+P088,HC-VIM-500,Vim Dishwash Gel 500ml,Home Care,Dishwash,99.00,81.18,18.00,500ml,730,false
+P089,HC-PRL-500,Pril Dishwash Liquid 500ml,Home Care,Dishwash,109.00,89.38,18.00,500ml,730,false
+P090,HC-HRP-500,Harpic Power Plus 500ml,Home Care,Toilet Cleaner,99.00,81.18,18.00,500ml,730,false
+P091,HC-DOM-500,Domex Fresh Guard 500ml,Home Care,Toilet Cleaner,85.00,69.70,18.00,500ml,730,false
+P092,HC-LZL-500,Lizol Citrus Disinfectant 500ml,Home Care,Floor Cleaner,120.00,98.40,18.00,500ml,730,false
+P093,HC-CLN-500,Colin Glass Cleaner 500ml,Home Care,Glass Cleaner,95.00,77.90,18.00,500ml,730,false
+P094,HC-FNA-75,Fena Detergent Bar 200g,Home Care,Detergent,15.00,12.30,18.00,200g,730,false
+P095,HC-WHL-1K,Wheel Active 2in1 1kg,Home Care,Detergent,62.00,50.84,18.00,1kg,730,false
+P096,HC-GHD-100,Good Knight Advanced Liquid Refill 45ml,Home Care,Insect Repellent,56.00,45.92,18.00,45ml,365,false
+P097,HC-ALO-45,All Out Ultra Liquid Refill 45ml,Home Care,Insect Repellent,52.00,42.64,18.00,45ml,365,false
+P098,HC-MTR-45,Mortein Insta5 Refill 45ml,Home Care,Insect Repellent,55.00,45.10,18.00,45ml,365,false
+P099,HC-OOD-200,Odonil Lavender Air Freshener 200g,Home Care,Air Freshener,85.00,69.70,18.00,200g,365,false
+P100,HC-SRF-LQ,Surf Excel Matic Liquid 1L,Home Care,Detergent,245.00,200.90,18.00,1L,730,false
+P101,DRY-AML-500,Amul Butter 500g,Dairy,Butter,270.00,243.00,10.00,500g,90,true
+P102,DRY-AML-100,Amul Butter 100g,Dairy,Butter,56.00,50.40,10.00,100g,90,true
+P103,DRY-AML-TCZ,Amul Taaza Toned Milk 500ml,Dairy,Milk,28.00,25.20,10.00,500ml,7,false
+P104,DRY-AML-GLD,Amul Gold Full Cream Milk 500ml,Dairy,Milk,32.00,28.80,10.00,500ml,7,false
+P105,DRY-AML-CHZ,Amul Cheese Slices 200g (10 Slices),Dairy,Cheese,120.00,108.00,10.00,200g,120,false
+P106,DRY-AML-PCH,Amul Processed Cheese Block 200g,Dairy,Cheese,99.00,89.10,10.00,200g,120,false
+P107,DRY-MTH-CRD,Mother Dairy Curd 400g,Dairy,Curd,35.00,31.50,10.00,400g,14,false
+P108,DRY-AML-LSI,Amul Lassi Mango 200ml,Dairy,Flavored,25.00,22.50,10.00,200ml,30,false
+P109,DRY-AML-ICE,Amul Kool Koko 200ml,Dairy,Flavored,20.00,18.00,10.00,200ml,30,false
+P110,DRY-NTR-350,Nestle Everyday Dairy Whitener 350g,Dairy,Whitener,175.00,147.00,16.00,350g,365,false
+P111,STP-ASH-1K,ITC Aashirvaad Atta 1kg,Staples,Flour,58.00,49.30,15.00,1kg,180,true
+P112,STP-ASH-5K,ITC Aashirvaad Atta 5kg,Staples,Flour,265.00,225.25,15.00,5kg,180,true
+P113,STP-ASH-10K,ITC Aashirvaad Atta 10kg,Staples,Flour,490.00,416.50,15.00,10kg,180,false
+P114,STP-FOR-1K,Fortune Chakki Fresh Atta 1kg,Staples,Flour,52.00,44.20,15.00,1kg,180,false
+P115,STP-TTT-500,Tata Salt 1kg,Staples,Salt,24.00,20.40,15.00,1kg,730,true
+P116,STP-TTT-IOD,Tata Salt Lite Low Sodium 1kg,Staples,Salt,30.00,25.50,15.00,1kg,730,false
+P117,STP-SFF-1L,Saffola Gold Edible Oil 1L,Staples,Oil,199.00,169.15,15.00,1L,365,false
+P118,STP-FOR-1L,Fortune Soyabean Oil 1L,Staples,Oil,130.00,110.50,15.00,1L,365,true
+P119,STP-FOR-5L,Fortune Sunlite Refined Oil 5L,Staples,Oil,620.00,527.00,15.00,5L,365,false
+P120,STP-BRM-500,India Gate Basmati Rice 1kg,Staples,Rice,160.00,136.00,15.00,1kg,365,false
+P121,STP-TTR-1K,Tata Sampann Tur Dal 1kg,Staples,Pulses,180.00,153.00,15.00,1kg,365,false
+P122,STP-TTM-1K,Tata Sampann Moong Dal 1kg,Staples,Pulses,155.00,131.75,15.00,1kg,365,false
+P123,STP-MDH-100,MDH Garam Masala 100g,Staples,Spices,75.00,63.75,15.00,100g,365,false
+P124,STP-EVR-100,Everest Kitchen King 100g,Staples,Spices,85.00,72.25,15.00,100g,365,false
+P125,STP-TTT-TPK,Tata Sampann Turmeric Powder 100g,Staples,Spices,42.00,35.70,15.00,100g,365,false
+P126,STP-CTH-200,Catch Red Chilli Powder 200g,Staples,Spices,80.00,68.00,15.00,200g,365,false
+P127,STP-ASH-SMJ,ITC Aashirvaad Suji 500g,Staples,Semolina,38.00,32.30,15.00,500g,180,false
+P128,STP-ASH-RVA,ITC Aashirvaad Rawa 500g,Staples,Semolina,40.00,34.00,15.00,500g,180,false
+P129,STP-MTR-500,MTR Ready Mix Rava Idli 500g,Staples,Ready Mix,99.00,84.15,15.00,500g,270,false
+P130,STP-SGR-1K,India Gate Sugar 1kg,Staples,Sugar,48.00,40.80,15.00,1kg,730,false
+P131,CNF-CDY-DS,Cadbury Dairy Milk 50g,Confectionery,Chocolate,50.00,41.00,18.00,50g,365,true
+P132,CNF-CDY-SK,Cadbury Dairy Milk Silk 150g,Confectionery,Chocolate,170.00,139.40,18.00,150g,365,true
+P133,CNF-CDY-5S,Cadbury 5 Star 40g,Confectionery,Chocolate,20.00,16.40,18.00,40g,365,false
+P134,CNF-CDY-GEM,Cadbury Gems 18g,Confectionery,Chocolate,10.00,8.20,18.00,18g,365,false
+P135,CNF-KKT-LRG,KitKat 4 Finger 37.3g,Confectionery,Chocolate,40.00,32.80,18.00,37.3g,365,false
+P136,CNF-MBR-35,Munch 35g,Confectionery,Chocolate,10.00,8.20,18.00,35g,365,false
+P137,CNF-POP-5,Poppins Candy Roll 5g,Confectionery,Candy,2.00,1.64,18.00,5g,365,false
+P138,CNF-KSS-60,Kissan Mixed Fruit Jam 200g,Confectionery,Spreads,85.00,69.70,18.00,200g,365,false
+P139,CNF-NTL-CRN,Nutella Hazelnut Spread 350g,Confectionery,Spreads,450.00,369.00,18.00,350g,365,false
+P140,CNF-MNT-10,Mentos Mint Roll 37g,Confectionery,Candy,20.00,16.40,18.00,37g,365,false
+P141,CNF-CPL-10,Cadbury Perk 22g,Confectionery,Chocolate,10.00,8.20,18.00,22g,365,false
+P142,CNF-ALN-40,Alpenlibe Gold 40g,Confectionery,Toffee,10.00,8.20,18.00,40g,365,false
+P143,CNF-MKN-5,Mango Bite Candy (10 Pack),Confectionery,Candy,10.00,8.20,18.00,10pcs,365,false
+P144,CNF-DBH-250,Dabur Honey 250g,Confectionery,Honey,145.00,118.90,18.00,250g,730,true
+P145,CNF-DBH-500,Dabur Honey 500g,Confectionery,Honey,265.00,217.30,18.00,500g,730,false
+P146,CNF-HRN-100,Hershey's Syrup 200g,Confectionery,Syrup,175.00,143.50,18.00,200g,365,false
+P147,CNF-CDY-BRN,Cadbury Bournville 80g,Confectionery,Chocolate,120.00,98.40,18.00,80g,365,false
+P148,CNF-SPN-20,Smileys Paan Flavour (10 Pack),Confectionery,Candy,10.00,8.20,18.00,10pcs,365,false
+P149,CNF-HAR-175,Haribo Goldbears 175g,Confectionery,Gummy,250.00,205.00,18.00,175g,365,false
+P150,CNF-CDY-ORM,Cadbury Oreo Milkshake 180ml,Confectionery,Drinks,30.00,24.60,18.00,180ml,120,false
+P151,NDL-MAG-70,Maggi 2-Minute Noodles 70g,Noodles/Pasta,Instant,14.00,11.48,18.00,70g,240,true
+P152,NDL-MAG-4PK,Maggi 2-Minute Noodles 4-Pack 280g,Noodles/Pasta,Instant,48.00,39.36,18.00,280g,240,true
+P153,NDL-MAG-ATA,Maggi Atta Noodles 80g,Noodles/Pasta,Healthy,15.00,12.30,18.00,80g,240,false
+P154,NDL-YPP-70,Yippee Noodles Magic Masala 70g,Noodles/Pasta,Instant,14.00,11.48,18.00,70g,240,true
+P155,NDL-YPP-4PK,Yippee Noodles 4-Pack 280g,Noodles/Pasta,Instant,48.00,39.36,18.00,280g,240,false
+P156,NDL-TOP-70,Top Ramen Curry 70g,Noodles/Pasta,Instant,14.00,11.48,18.00,70g,240,false
+P157,NDL-WAI-70,Wai Wai Noodles 70g,Noodles/Pasta,Instant,15.00,12.30,18.00,70g,240,false
+P158,NDL-MAG-CUP,Maggi Cup Noodles Masala 70g,Noodles/Pasta,Cup,45.00,36.90,18.00,70g,240,false
+P159,NDL-KNR-SPN,Knorr Soupy Noodles 75g,Noodles/Pasta,Soup,15.00,12.30,18.00,75g,240,false
+P160,NDL-MAG-HM,Maggi Hot Heads 71g,Noodles/Pasta,Instant,20.00,16.40,18.00,71g,240,false
+P161,NDL-PST-500,Bambino Vermicelli 500g,Noodles/Pasta,Pasta,40.00,32.80,18.00,500g,365,false
+P162,NDL-PST-PEN,Del Monte Penne Pasta 500g,Noodles/Pasta,Pasta,120.00,98.40,18.00,500g,365,false
+P163,NDL-SCE-200,Maggi Hot & Sweet Ketchup 200g,Noodles/Pasta,Sauce,55.00,45.10,18.00,200g,365,false
+P164,NDL-SCE-500,Kissan Fresh Tomato Ketchup 500g,Noodles/Pasta,Sauce,110.00,90.20,18.00,500g,365,false
+P165,NDL-SCE-1K,Kissan Fresh Tomato Ketchup 1kg,Noodles/Pasta,Sauce,189.00,154.98,18.00,1kg,365,false
+P166,NDL-MAG-MSL,Maggi Masala-ae-Magic 6g Sachet (12 Pack),Noodles/Pasta,Seasoning,60.00,49.20,18.00,72g,365,false
+P167,NDL-KNR-SPC,Knorr Chinese Schezwan Noodles 68g,Noodles/Pasta,Instant,15.00,12.30,18.00,68g,240,false
+P168,NDL-CHG-200,Ching's Secret Schezwan Chutney 250g,Noodles/Pasta,Sauce,95.00,77.90,18.00,250g,365,false
+P169,NDL-MAG-VEG,Maggi Vegetable Atta Noodles 4-Pack,Noodles/Pasta,Healthy,56.00,45.92,18.00,320g,240,false
+P170,NDL-PTJ-200,Patanjali Atta Noodles 4-Pack,Noodles/Pasta,Healthy,40.00,32.80,18.00,280g,240,false
+P171,HF-BRN-1K,Bournvita Health Drink 1kg,Health Foods,Malt Beverage,450.00,369.00,18.00,1kg,365,true
+P172,HF-BRN-500,Bournvita Health Drink 500g,Health Foods,Malt Beverage,240.00,196.80,18.00,500g,365,true
+P173,HF-HRL-500,Horlicks Classic Malt 500g,Health Foods,Malt Beverage,250.00,205.00,18.00,500g,365,false
+P174,HF-HRL-1K,Horlicks Classic Malt 1kg,Health Foods,Malt Beverage,470.00,385.40,18.00,1kg,365,false
+P175,HF-CMP-500,Complan Royale Chocolate 500g,Health Foods,Malt Beverage,280.00,229.60,18.00,500g,365,false
+P176,HF-DBR-250,Dabur Chyawanprash 250g,Health Foods,Ayurvedic,120.00,98.40,18.00,250g,730,false
+P177,HF-DBR-500,Dabur Chyawanprash 500g,Health Foods,Ayurvedic,199.00,163.18,18.00,500g,730,true
+P178,HF-PTJ-500,Patanjali Chyawanprash 500g,Health Foods,Ayurvedic,160.00,131.20,18.00,500g,730,false
+P179,HF-ENS-400,Ensure Vanilla 400g,Health Foods,Nutrition,750.00,615.00,18.00,400g,730,false
+P180,HF-PDB-400,Protinex Original 400g,Health Foods,Protein,550.00,451.00,18.00,400g,730,false
+P181,BEV-TTG-500,Tata Tea Gold 500g,Beverages,Tea,265.00,217.30,18.00,500g,365,true
+P182,BEV-TTG-100,Tata Tea Gold 100g,Beverages,Tea,55.00,45.10,18.00,100g,365,false
+P183,BEV-TTP-250,Tata Tea Premium 250g,Beverages,Tea,110.00,90.20,18.00,250g,365,false
+P184,BEV-WGH-250,Wagh Bakri Chai 250g,Beverages,Tea,105.00,86.10,18.00,250g,365,false
+P185,BEV-SCT-250,Society Tea 250g,Beverages,Tea,115.00,94.30,18.00,250g,365,false
+P186,BEV-NSC-50,Nescafe Classic Coffee 50g,Beverages,Coffee,175.00,143.50,18.00,50g,365,true
+P187,BEV-NSC-100,Nescafe Classic Coffee 100g,Beverages,Coffee,310.00,254.20,18.00,100g,365,false
+P188,BEV-BRC-100,Bru Instant Coffee 100g,Beverages,Coffee,240.00,196.80,18.00,100g,365,false
+P189,BEV-NSC-SAC,Nescafe Classic Sachet 1.5g (50 Pack),Beverages,Coffee,250.00,205.00,18.00,75g,365,false
+P190,BEV-CTC-100,Tata Coffee Grand 50g,Beverages,Coffee,155.00,127.10,18.00,50g,365,false
+P191,PC-OLAY-50,Olay Total Effects Day Cream 50g,Personal Care,Skin Care,599.00,479.20,20.00,50g,730,false
+P192,PC-SET-100,Set Wet Hair Gel 100ml,Personal Care,Hair Care,99.00,79.20,20.00,100ml,730,false
+P193,PC-AXE-150,Axe Dark Temptation Deo 150ml,Personal Care,Deodorant,240.00,192.00,20.00,150ml,730,false
+P194,PC-NVD-150,Nivea Men Cool Kick Deo 150ml,Personal Care,Deodorant,220.00,176.00,20.00,150ml,730,false
+P195,PC-WLD-200,Wild Stone Hydra Energy Deo 150ml,Personal Care,Deodorant,199.00,159.20,20.00,150ml,730,false
+P196,PC-GIL-PAK,Gillette Guard Cartridge 2-Pack,Personal Care,Shaving,60.00,48.00,20.00,2pcs,1095,false
+P197,PC-VIT-50,Vicco Turmeric Cream 50g,Personal Care,Skin Care,95.00,76.00,20.00,50g,730,false
+P198,PC-MYS-75,Mysore Sandal Soap 75g,Personal Care,Soap,45.00,36.90,18.00,75g,730,false
+P199,PC-HTM-150,Himalaya Neem Face Wash 150ml,Personal Care,Face Care,175.00,140.00,20.00,150ml,730,false
+P200,PC-VVL-100,Vivel Aloe Vera Soap 100g,Personal Care,Soap,30.00,24.60,18.00,100g,730,false

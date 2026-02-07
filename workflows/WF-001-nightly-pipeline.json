@@ -1,0 +1,309 @@
+{
+  "name": "WF-001 Nightly Data Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 30 20 * * *"
+            }
+          ]
+        }
+      },
+      "id": "wf001-cron-trigger",
+      "name": "Cron - 2AM IST Daily",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "notes": "Runs at 20:30 UTC = 02:00 AM IST daily"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://localhost:3001/transactions",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "since",
+              "value": "={{ $now.minus({ days: 1 }).toISO() }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000,
+          "fullResponse": false
+        }
+      },
+      "id": "wf001-fetch-transactions",
+      "name": "Fetch Latest Transactions",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [480, 300],
+      "notes": "GET transactions from SFA service since yesterday"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/tasks/generate",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "company_id",
+              "value": "={{ $json.company_id }}"
+            },
+            {
+              "name": "trigger",
+              "value": "nightly_pipeline"
+            },
+            {
+              "name": "date",
+              "value": "={{ $now.toISODate() }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 120000,
+          "fullResponse": false
+        }
+      },
+      "id": "wf001-generate-tasks",
+      "name": "Trigger AI Task Generation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [720, 300],
+      "notes": "POST to AI service to generate personalized tasks for all reps"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-success-check",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "wf001-check-success",
+      "name": "Check Success",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [960, 300],
+      "notes": "Route based on whether task generation succeeded"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3001/monitoring/log",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "workflow",
+              "value": "WF-001-nightly-pipeline"
+            },
+            {
+              "name": "status",
+              "value": "success"
+            },
+            {
+              "name": "tasks_generated",
+              "value": "={{ $json.tasks_generated || 0 }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}"
+            },
+            {
+              "name": "message",
+              "value": "Nightly pipeline completed successfully"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "wf001-log-success",
+      "name": "Log Success to Monitoring",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1200, 180],
+      "notes": "Log successful pipeline run to monitoring endpoint"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3003/notify/whatsapp",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $env.ADMIN_PHONE }}"
+            },
+            {
+              "name": "template",
+              "value": "pipeline_failure_alert"
+            },
+            {
+              "name": "message",
+              "value": "ALERT: Nightly pipeline WF-001 failed at {{ $now.toISO() }}. Error: {{ $json.error || 'Unknown error' }}. Tasks were NOT generated. Please check AI service logs."
+            },
+            {
+              "name": "priority",
+              "value": "high"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "wf001-send-alert",
+      "name": "Send Failure Alert via WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1200, 420],
+      "notes": "Alert admin via WhatsApp that the nightly pipeline failed"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3001/monitoring/log",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "workflow",
+              "value": "WF-001-nightly-pipeline"
+            },
+            {
+              "name": "status",
+              "value": "failure"
+            },
+            {
+              "name": "error",
+              "value": "={{ $json.error || 'Task generation returned success=false' }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "wf001-log-failure",
+      "name": "Log Failure to Monitoring",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1440, 420],
+      "notes": "Log pipeline failure to monitoring endpoint"
+    }
+  ],
+  "connections": {
+    "Cron - 2AM IST Daily": {
+      "main": [
+        [
+          {
+            "node": "Fetch Latest Transactions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Latest Transactions": {
+      "main": [
+        [
+          {
+            "node": "Trigger AI Task Generation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger AI Task Generation": {
+      "main": [
+        [
+          {
+            "node": "Check Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Success": {
+      "main": [
+        [
+          {
+            "node": "Log Success to Monitoring",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Failure Alert via WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Failure Alert via WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Log Failure to Monitoring",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "versionId": "wf-001-v1",
+  "meta": {
+    "instanceId": "opensalesai-local"
+  },
+  "tags": [
+    {
+      "name": "nightly",
+      "id": "tag-nightly"
+    },
+    {
+      "name": "pipeline",
+      "id": "tag-pipeline"
+    }
+  ]
+}

@@ -1,0 +1,241 @@
+# =============================================================================
+# OpenSalesAI — Caddy Reverse Proxy Configuration
+# =============================================================================
+# Development: Uses localhost with automatic self-signed certs.
+# Production:  Replace {$DOMAIN_NAME} with your actual domain for auto-TLS.
+#
+# Caddy automatically handles:
+#   - HTTPS certificate provisioning (Let's Encrypt / ZeroSSL)
+#   - HTTP -> HTTPS redirect
+#   - HTTP/2 and HTTP/3
+#   - OCSP stapling
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Global options
+# ---------------------------------------------------------------------------
+{
+	# In development, use internal CA for self-signed certs
+	# Comment out this block in production for real Let's Encrypt certs
+	local_certs
+
+	# Email for ACME registration (production only)
+	# email admin@opensalesai.com
+
+	# Enable admin API on non-standard port (optional)
+	admin off
+}
+
+# ---------------------------------------------------------------------------
+# Development: localhost catch-all
+# ---------------------------------------------------------------------------
+localhost, :80 {
+
+	# -----------------------------------------------------------------------
+	# API Gateway — /api/*
+	# -----------------------------------------------------------------------
+	handle /api/* {
+		reverse_proxy localhost:4000 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote_host}
+			header_up X-Correlation-ID {header.X-Correlation-ID}
+		}
+	}
+
+	# -----------------------------------------------------------------------
+	# SFA Service — /sfa/*
+	# -----------------------------------------------------------------------
+	handle /sfa/* {
+		uri strip_prefix /sfa
+		reverse_proxy localhost:4001 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# -----------------------------------------------------------------------
+	# eB2B Service — /eb2b/*
+	# -----------------------------------------------------------------------
+	handle /eb2b/* {
+		uri strip_prefix /eb2b
+		reverse_proxy localhost:4002 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# -----------------------------------------------------------------------
+	# AI Service (Python FastAPI) — /ai/*
+	# -----------------------------------------------------------------------
+	handle /ai/* {
+		uri strip_prefix /ai
+		reverse_proxy localhost:8000 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote_host}
+			# Longer timeouts for AI inference
+			transport http {
+				read_timeout 120s
+				write_timeout 120s
+			}
+		}
+	}
+
+	# -----------------------------------------------------------------------
+	# Notification Service — /notify/*
+	# -----------------------------------------------------------------------
+	handle /notify/* {
+		uri strip_prefix /notify
+		reverse_proxy localhost:4003 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# -----------------------------------------------------------------------
+	# WhatsApp Webhook (public, no auth) — /webhooks/whatsapp
+	# -----------------------------------------------------------------------
+	handle /webhooks/whatsapp {
+		reverse_proxy localhost:4002 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# -----------------------------------------------------------------------
+	# Keycloak — /auth/*
+	# -----------------------------------------------------------------------
+	handle /auth/* {
+		reverse_proxy localhost:8080 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-Host {host}
+		}
+	}
+
+	# -----------------------------------------------------------------------
+	# n8n Workflow Engine — /n8n/*
+	# -----------------------------------------------------------------------
+	handle /n8n/* {
+		uri strip_prefix /n8n
+		reverse_proxy localhost:5678 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# -----------------------------------------------------------------------
+	# n8n Webhook endpoints (used by external services)
+	# -----------------------------------------------------------------------
+	handle /webhook/* {
+		reverse_proxy localhost:5678 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+	handle /webhook-test/* {
+		reverse_proxy localhost:5678 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# -----------------------------------------------------------------------
+	# Grafana — /grafana/*
+	# -----------------------------------------------------------------------
+	handle /grafana/* {
+		uri strip_prefix /grafana
+		reverse_proxy localhost:3001 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# -----------------------------------------------------------------------
+	# MLflow — /mlflow/*
+	# -----------------------------------------------------------------------
+	handle /mlflow/* {
+		uri strip_prefix /mlflow
+		reverse_proxy localhost:5000 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# -----------------------------------------------------------------------
+	# MinIO Console — /minio/*
+	# -----------------------------------------------------------------------
+	handle /minio/* {
+		uri strip_prefix /minio
+		reverse_proxy localhost:9001 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# -----------------------------------------------------------------------
+	# Retailer PWA — /shop/*
+	# -----------------------------------------------------------------------
+	handle /shop/* {
+		uri strip_prefix /shop
+		reverse_proxy localhost:3002 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# -----------------------------------------------------------------------
+	# Health check endpoint
+	# -----------------------------------------------------------------------
+	handle /health {
+		respond "OK" 200
+	}
+
+	# -----------------------------------------------------------------------
+	# Default: Dashboard (Next.js) — serves everything else
+	# -----------------------------------------------------------------------
+	handle {
+		reverse_proxy localhost:3000 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# -----------------------------------------------------------------------
+	# Security headers
+	# -----------------------------------------------------------------------
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options SAMEORIGIN
+		X-XSS-Protection "1; mode=block"
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	# -----------------------------------------------------------------------
+	# Compression
+	# -----------------------------------------------------------------------
+	encode gzip zstd
+
+	# -----------------------------------------------------------------------
+	# Access logging
+	# -----------------------------------------------------------------------
+	log {
+		output stdout
+		format json
+		level INFO
+	}
+}
+
+# =============================================================================
+# Production configuration (uncomment and replace domain)
+# =============================================================================
+# {$DOMAIN_NAME:opensalesai.example.com} {
+#     # Same handle blocks as above, but with real domain
+#     # Caddy auto-provisions TLS certificates
+#
+#     tls {
+#         protocols tls1.2 tls1.3
+#     }
+#
+#     # ... (copy handle blocks from above)
+# }

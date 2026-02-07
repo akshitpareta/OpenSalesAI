@@ -1,0 +1,58 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Build outputs
+dist/
+.next/
+.turbo/
+out/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Docker
+docker-compose.override.yml
+
+# Prisma
+services/api-gateway/prisma/migrations/**/migration_lock.toml
+
+# ML artifacts
+*.pkl
+*.joblib
+*.h5
+*.pt
+*.onnx
+mlruns/
+
+# Logs
+*.log
+logs/
+
+# MinIO data
+minio-data/
+
+# Coverage
+coverage/
+.nyc_output/
+htmlcov/
+
+# Temporary
+tmp/
+temp/

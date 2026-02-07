@@ -1,0 +1,290 @@
+{
+  "name": "WF-002 Manual Task Generation",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "wf002-manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "notes": "Manually trigger on-demand task regeneration for a specific company or all companies"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "company_id",
+              "value": "={{ $env.DEFAULT_COMPANY_ID || 'all' }}"
+            },
+            {
+              "name": "force_regenerate",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "wf002-set-params",
+      "name": "Set Generation Parameters",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.2,
+      "position": [460, 300],
+      "notes": "Configure task generation parameters - set company_id to specific company or 'all'"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/tasks/generate",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "company_id",
+              "value": "={{ $json.company_id }}"
+            },
+            {
+              "name": "force_regenerate",
+              "value": "={{ $json.force_regenerate }}"
+            },
+            {
+              "name": "trigger",
+              "value": "manual"
+            },
+            {
+              "name": "date",
+              "value": "={{ $now.toISODate() }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 180000,
+          "fullResponse": false
+        }
+      },
+      "id": "wf002-generate-tasks",
+      "name": "Generate Tasks via AI Service",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [700, 300],
+      "notes": "POST to AI service to generate tasks - timeout set to 3 minutes for large datasets"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-gen-success",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "wf002-check-result",
+      "name": "Check Generation Result",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [940, 300],
+      "notes": "Check if task generation completed successfully"
+    },
+    {
+      "parameters": {
+        "functionCode": "const tasksGenerated = $input.first().json.tasks_generated || 0;\nconst repsAffected = $input.first().json.reps_affected || 0;\nconst duration = $input.first().json.duration_seconds || 0;\n\nreturn [{\n  json: {\n    message: `Task generation completed successfully.\\n\\nTasks Generated: ${tasksGenerated}\\nReps Affected: ${repsAffected}\\nDuration: ${duration}s\\nTriggered: Manual\\nTimestamp: ${new Date().toISOString()}`,\n    tasks_generated: tasksGenerated,\n    reps_affected: repsAffected,\n    status: 'success'\n  }\n}];"
+      },
+      "id": "wf002-format-success",
+      "name": "Format Success Message",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1180, 180],
+      "notes": "Format a human-readable success summary"
+    },
+    {
+      "parameters": {
+        "functionCode": "const error = $input.first().json.error || 'Unknown error during task generation';\n\nreturn [{\n  json: {\n    message: `Task generation FAILED.\\n\\nError: ${error}\\nTriggered: Manual\\nTimestamp: ${new Date().toISOString()}\\n\\nPlease check AI service logs for details.`,\n    error: error,\n    status: 'failure'\n  }\n}];"
+      },
+      "id": "wf002-format-failure",
+      "name": "Format Failure Message",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1180, 420],
+      "notes": "Format a human-readable failure message"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3003/notify/whatsapp",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $env.ADMIN_PHONE }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "template",
+              "value": "task_generation_notification"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "wf002-notify-success",
+      "name": "Notify Admin - Success",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1420, 180],
+      "notes": "Send success notification to admin via WhatsApp"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3003/notify/whatsapp",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $env.ADMIN_PHONE }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "priority",
+              "value": "high"
+            },
+            {
+              "name": "template",
+              "value": "task_generation_failure"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "wf002-notify-failure",
+      "name": "Notify Admin - Failure",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1420, 420],
+      "notes": "Send failure alert to admin via WhatsApp"
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Generation Parameters",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Generation Parameters": {
+      "main": [
+        [
+          {
+            "node": "Generate Tasks via AI Service",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Tasks via AI Service": {
+      "main": [
+        [
+          {
+            "node": "Check Generation Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Generation Result": {
+      "main": [
+        [
+          {
+            "node": "Format Success Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Failure Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Success Message": {
+      "main": [
+        [
+          {
+            "node": "Notify Admin - Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Failure Message": {
+      "main": [
+        [
+          {
+            "node": "Notify Admin - Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "wf-002-v1",
+  "meta": {
+    "instanceId": "opensalesai-local"
+  },
+  "tags": [
+    {
+      "name": "tasks",
+      "id": "tag-tasks"
+    },
+    {
+      "name": "manual",
+      "id": "tag-manual"
+    }
+  ]
+}

@@ -1,0 +1,153 @@
+# =============================================================================
+# OpenSalesAI — Prometheus Configuration
+# =============================================================================
+# Scrape targets for all services exposing /metrics endpoints.
+# =============================================================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+
+  external_labels:
+    cluster: "opensalesai-dev"
+    environment: "development"
+
+# ---------------------------------------------------------------------------
+# Alerting (optional — configure Alertmanager if needed)
+# ---------------------------------------------------------------------------
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets:
+#           - alertmanager:9093
+
+# ---------------------------------------------------------------------------
+# Rule files (optional — for recording rules and alerts)
+# ---------------------------------------------------------------------------
+# rule_files:
+#   - /etc/prometheus/rules/*.yml
+
+# ---------------------------------------------------------------------------
+# Scrape configurations
+# ---------------------------------------------------------------------------
+scrape_configs:
+  # -------------------------------------------------------------------------
+  # Prometheus self-monitoring
+  # -------------------------------------------------------------------------
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+        labels:
+          service: "prometheus"
+
+  # -------------------------------------------------------------------------
+  # API Gateway (Fastify + prom-client)
+  # -------------------------------------------------------------------------
+  - job_name: "api-gateway"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["host.docker.internal:4000"]
+        labels:
+          service: "api-gateway"
+          tier: "backend"
+
+  # -------------------------------------------------------------------------
+  # SFA Service
+  # -------------------------------------------------------------------------
+  - job_name: "sfa-service"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["host.docker.internal:4001"]
+        labels:
+          service: "sfa-service"
+          tier: "backend"
+
+  # -------------------------------------------------------------------------
+  # eB2B Service
+  # -------------------------------------------------------------------------
+  - job_name: "eb2b-service"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["host.docker.internal:4002"]
+        labels:
+          service: "eb2b-service"
+          tier: "backend"
+
+  # -------------------------------------------------------------------------
+  # Notification Service
+  # -------------------------------------------------------------------------
+  - job_name: "notification-service"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["host.docker.internal:4003"]
+        labels:
+          service: "notification-service"
+          tier: "backend"
+
+  # -------------------------------------------------------------------------
+  # AI Service (Python FastAPI + prometheus_client)
+  # -------------------------------------------------------------------------
+  - job_name: "ai-service"
+    metrics_path: /metrics
+    scrape_interval: 30s
+    static_configs:
+      - targets: ["host.docker.internal:8000"]
+        labels:
+          service: "ai-service"
+          tier: "ml"
+
+  # -------------------------------------------------------------------------
+  # PostgreSQL (via postgres_exporter, if deployed)
+  # -------------------------------------------------------------------------
+  # - job_name: "postgresql"
+  #   static_configs:
+  #     - targets: ["postgres-exporter:9187"]
+  #       labels:
+  #         service: "postgresql"
+  #         tier: "infrastructure"
+
+  # -------------------------------------------------------------------------
+  # Redis (via redis_exporter, if deployed)
+  # -------------------------------------------------------------------------
+  # - job_name: "redis"
+  #   static_configs:
+  #     - targets: ["redis-exporter:9121"]
+  #       labels:
+  #         service: "redis"
+  #         tier: "infrastructure"
+
+  # -------------------------------------------------------------------------
+  # Node.js application metrics (Next.js dashboard)
+  # -------------------------------------------------------------------------
+  - job_name: "dashboard"
+    metrics_path: /api/metrics
+    scrape_interval: 30s
+    static_configs:
+      - targets: ["host.docker.internal:3000"]
+        labels:
+          service: "dashboard"
+          tier: "frontend"
+
+  # -------------------------------------------------------------------------
+  # Caddy reverse proxy metrics
+  # -------------------------------------------------------------------------
+  # Caddy exposes metrics at :2019/metrics by default (admin API)
+  # - job_name: "caddy"
+  #   static_configs:
+  #     - targets: ["caddy:2019"]
+  #       labels:
+  #         service: "caddy"
+  #         tier: "infrastructure"
+
+  # -------------------------------------------------------------------------
+  # MinIO metrics
+  # -------------------------------------------------------------------------
+  - job_name: "minio"
+    metrics_path: /minio/v2/metrics/cluster
+    scheme: http
+    static_configs:
+      - targets: ["minio:9000"]
+        labels:
+          service: "minio"
+          tier: "infrastructure"

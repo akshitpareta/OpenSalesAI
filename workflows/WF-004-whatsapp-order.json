@@ -1,0 +1,1016 @@
+{
+  "name": "WF-004 WhatsApp Order Processing",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "webhooks/whatsapp",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "id": "wf004-webhook-trigger",
+      "name": "WhatsApp Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 400],
+      "webhookId": "whatsapp-order-webhook",
+      "notes": "Receives incoming WhatsApp Cloud API webhook payloads"
+    },
+    {
+      "parameters": {
+        "functionCode": "const body = $input.first().json;\n\n// Extract message data from WhatsApp Cloud API payload\nconst entry = body.entry && body.entry[0];\nconst changes = entry && entry.changes && entry.changes[0];\nconst value = changes && changes.value;\nconst messages = value && value.messages;\n\nif (!messages || messages.length === 0) {\n  return [{ json: { skip: true, reason: 'No messages in payload (status update or other event)' } }];\n}\n\nconst msg = messages[0];\nconst contact = value.contacts && value.contacts[0];\n\nreturn [{\n  json: {\n    message_id: msg.id,\n    from: msg.from,\n    timestamp: msg.timestamp,\n    type: msg.type,\n    contact_name: contact ? contact.profile.name : 'Unknown',\n    // Text message content\n    text_body: msg.text ? msg.text.body : null,\n    // Audio message\n    audio_id: msg.audio ? msg.audio.id : null,\n    audio_mime: msg.audio ? msg.audio.mime_type : null,\n    // Image message\n    image_id: msg.image ? msg.image.id : null,\n    image_mime: msg.image ? msg.image.mime_type : null,\n    image_caption: msg.image ? msg.image.caption : null,\n    // Store identification\n    store_phone: msg.from,\n    skip: false\n  }\n}];"
+      },
+      "id": "wf004-extract-message",
+      "name": "Extract Message Data",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [480, 400],
+      "notes": "Parse WhatsApp Cloud API webhook payload and extract message type, content, and sender info"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-skip-check",
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "wf004-check-skip",
+      "name": "Has Message?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [700, 400],
+      "notes": "Skip processing if payload has no actual message (e.g., status updates)"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=http://localhost:3001/stores/by-phone/{{ $json.store_phone }}",
+        "options": {
+          "timeout": 10000,
+          "fullResponse": false
+        }
+      },
+      "id": "wf004-lookup-store",
+      "name": "Lookup Store by Phone",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [940, 500],
+      "notes": "Identify which store sent the WhatsApp message using their phone number"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "rules": [
+            {
+              "value": "text",
+              "output": 0
+            },
+            {
+              "value": "audio",
+              "output": 1
+            },
+            {
+              "value": "image",
+              "output": 2
+            }
+          ]
+        },
+        "dataType": "string",
+        "value1": "={{ $('Extract Message Data').first().json.type }}"
+      },
+      "id": "wf004-switch-type",
+      "name": "Route by Message Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1200, 500],
+      "notes": "Route to different processing branches based on message type: text, audio, or image"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/orders/parse",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{ $('Extract Message Data').first().json.text_body }}"
+            },
+            {
+              "name": "store_id",
+              "value": "={{ $('Lookup Store by Phone').first().json.id }}"
+            },
+            {
+              "name": "store_name",
+              "value": "={{ $('Lookup Store by Phone').first().json.name }}"
+            },
+            {
+              "name": "source",
+              "value": "whatsapp_text"
+            },
+            {
+              "name": "message_id",
+              "value": "={{ $('Extract Message Data').first().json.message_id }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000,
+          "fullResponse": false
+        }
+      },
+      "id": "wf004-parse-text",
+      "name": "Parse Text Order (AI)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1480, 300],
+      "notes": "Send text message to AI service for NLU order parsing"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://graph.facebook.com/v18.0/{{ $('Extract Message Data').first().json.audio_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000,
+          "fullResponse": true
+        }
+      },
+      "id": "wf004-download-audio",
+      "name": "Download Audio from WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1480, 500],
+      "notes": "Download voice note audio from WhatsApp Media API"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/stt/transcribe",
+        "sendBody": true,
+        "contentType": "binaryData",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "audio_url",
+              "value": "={{ $json.url }}"
+            },
+            {
+              "name": "mime_type",
+              "value": "={{ $('Extract Message Data').first().json.audio_mime }}"
+            },
+            {
+              "name": "language",
+              "value": "hi"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000,
+          "fullResponse": false
+        }
+      },
+      "id": "wf004-transcribe-audio",
+      "name": "Transcribe Audio (Whisper)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1720, 500],
+      "notes": "Transcribe voice note using Whisper STT service (supports Hindi and English)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/orders/parse",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{ $json.transcript }}"
+            },
+            {
+              "name": "store_id",
+              "value": "={{ $('Lookup Store by Phone').first().json.id }}"
+            },
+            {
+              "name": "store_name",
+              "value": "={{ $('Lookup Store by Phone').first().json.name }}"
+            },
+            {
+              "name": "source",
+              "value": "whatsapp_voice"
+            },
+            {
+              "name": "message_id",
+              "value": "={{ $('Extract Message Data').first().json.message_id }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000,
+          "fullResponse": false
+        }
+      },
+      "id": "wf004-parse-audio-text",
+      "name": "Parse Transcribed Audio Order",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1960, 500],
+      "notes": "Parse the transcribed audio text through AI order parser"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://graph.facebook.com/v18.0/{{ $('Extract Message Data').first().json.image_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000,
+          "fullResponse": true
+        }
+      },
+      "id": "wf004-download-image",
+      "name": "Download Image from WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1480, 700],
+      "notes": "Download order image from WhatsApp Media API (handwritten orders, lists)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/vision/parse",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "image_url",
+              "value": "={{ $json.url }}"
+            },
+            {
+              "name": "mime_type",
+              "value": "={{ $('Extract Message Data').first().json.image_mime }}"
+            },
+            {
+              "name": "caption",
+              "value": "={{ $('Extract Message Data').first().json.image_caption }}"
+            },
+            {
+              "name": "store_id",
+              "value": "={{ $('Lookup Store by Phone').first().json.id }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000,
+          "fullResponse": false
+        }
+      },
+      "id": "wf004-ocr-image",
+      "name": "OCR / Vision Parse Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1720, 700],
+      "notes": "Extract order items from image using OCR/LLaVA vision model"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/orders/parse",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{ $json.extracted_text }}"
+            },
+            {
+              "name": "store_id",
+              "value": "={{ $('Lookup Store by Phone').first().json.id }}"
+            },
+            {
+              "name": "store_name",
+              "value": "={{ $('Lookup Store by Phone').first().json.name }}"
+            },
+            {
+              "name": "source",
+              "value": "whatsapp_image"
+            },
+            {
+              "name": "message_id",
+              "value": "={{ $('Extract Message Data').first().json.message_id }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000,
+          "fullResponse": false
+        }
+      },
+      "id": "wf004-parse-image-text",
+      "name": "Parse Image-Extracted Order",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1960, 700],
+      "notes": "Parse the OCR-extracted text through AI order parser"
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch",
+        "output": "mixed",
+        "options": {}
+      },
+      "id": "wf004-merge-branches",
+      "name": "Merge All Branches",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [2240, 500],
+      "notes": "Merge structured order items from text, audio, or image branches"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3002/catalog/match",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "items",
+              "value": "={{ JSON.stringify($json.items) }}"
+            },
+            {
+              "name": "store_id",
+              "value": "={{ $json.store_id }}"
+            },
+            {
+              "name": "company_id",
+              "value": "={{ $('Lookup Store by Phone').first().json.company_id }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000,
+          "fullResponse": false
+        }
+      },
+      "id": "wf004-catalog-match",
+      "name": "Fuzzy SKU Matching",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [2480, 500],
+      "notes": "Match parsed order items to product catalog SKUs using fuzzy matching"
+    },
+    {
+      "parameters": {
+        "functionCode": "const matchResult = $input.first().json;\nconst matches = matchResult.matches || [];\n\n// Check if all matches have confidence > 0.8\nconst lowConfidence = matches.filter(m => m.confidence < 0.8);\nconst allHighConfidence = lowConfidence.length === 0;\n\nreturn [{\n  json: {\n    ...matchResult,\n    all_high_confidence: allHighConfidence,\n    low_confidence_items: lowConfidence,\n    high_confidence_items: matches.filter(m => m.confidence >= 0.8),\n    store_id: matchResult.store_id || $('Lookup Store by Phone').first().json.id,\n    store_phone: $('Extract Message Data').first().json.store_phone,\n    message_id: $('Extract Message Data').first().json.message_id\n  }\n}];"
+      },
+      "id": "wf004-check-confidence",
+      "name": "Evaluate Match Confidence",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [2720, 500],
+      "notes": "Check if all catalog matches have confidence > 0.8; separate low-confidence items"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-confidence",
+              "leftValue": "={{ $json.all_high_confidence }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "wf004-if-confidence",
+      "name": "All Matches Confident?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2960, 500],
+      "notes": "Branch: if all items matched with >80% confidence, proceed; otherwise ask for clarification"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3003/notify/whatsapp",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $json.store_phone }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ 'We received your order but need clarification on some items:\\n\\n' + $json.low_confidence_items.map((item, i) => `${i+1}. \"${item.original_text}\" - Did you mean \"${item.best_match_name}\"?`).join('\\n') + '\\n\\nPlease reply YES to confirm, or send the correct product names.' }}"
+            },
+            {
+              "name": "template",
+              "value": "order_clarification"
+            },
+            {
+              "name": "context",
+              "value": "order_clarification"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "wf004-ask-clarification",
+      "name": "Ask Clarification via WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [3200, 660],
+      "notes": "Send WhatsApp message asking retailer to confirm ambiguous product matches"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3002/inventory/check",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "items",
+              "value": "={{ JSON.stringify($json.high_confidence_items || $json.matches) }}"
+            },
+            {
+              "name": "store_id",
+              "value": "={{ $json.store_id }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000,
+          "fullResponse": false
+        }
+      },
+      "id": "wf004-check-inventory",
+      "name": "Check Inventory Availability",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [3200, 380],
+      "notes": "Verify all matched products are in stock at the distributor"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-available",
+              "leftValue": "={{ $json.all_available }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "wf004-if-available",
+      "name": "All Items Available?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [3440, 380],
+      "notes": "Check if all ordered items are available in inventory"
+    },
+    {
+      "parameters": {
+        "functionCode": "const inventoryResult = $input.first().json;\nconst unavailable = inventoryResult.unavailable_items || [];\nconst substitutions = inventoryResult.substitution_suggestions || [];\n\nlet message = 'Some items in your order are currently out of stock:\\n\\n';\nunavailable.forEach((item, i) => {\n  message += `${i + 1}. ${item.product_name} (requested: ${item.requested_qty})\\n`;\n  const sub = substitutions.find(s => s.original_sku === item.sku_code);\n  if (sub) {\n    message += `   Suggestion: ${sub.substitute_name} at ${sub.substitute_price}\\n`;\n  }\n});\nmessage += '\\nReply YES to order available items only, or send a new order.';\n\nreturn [{\n  json: {\n    phone: $('Extract Message Data').first().json.store_phone,\n    message: message,\n    available_items: inventoryResult.available_items || [],\n    unavailable_items: unavailable\n  }\n}];"
+      },
+      "id": "wf004-format-substitutions",
+      "name": "Format Substitution Suggestions",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [3680, 500],
+      "notes": "Build a message with out-of-stock items and suggested substitutions"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3003/notify/whatsapp",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "template",
+              "value": "order_substitution"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "wf004-send-substitution",
+      "name": "Send Substitution Suggestions",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [3920, 500],
+      "notes": "Notify retailer about unavailable items and suggest substitutions"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3002/orders",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "store_id",
+              "value": "={{ $('Evaluate Match Confidence').first().json.store_id }}"
+            },
+            {
+              "name": "items",
+              "value": "={{ JSON.stringify($json.available_items || $('Evaluate Match Confidence').first().json.matches) }}"
+            },
+            {
+              "name": "source",
+              "value": "whatsapp"
+            },
+            {
+              "name": "whatsapp_msg_id",
+              "value": "={{ $('Extract Message Data').first().json.message_id }}"
+            },
+            {
+              "name": "company_id",
+              "value": "={{ $('Lookup Store by Phone').first().json.company_id }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000,
+          "fullResponse": false
+        }
+      },
+      "id": "wf004-create-order",
+      "name": "Create Order",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [3680, 260],
+      "notes": "Create the order in eB2B service with all confirmed items"
+    },
+    {
+      "parameters": {
+        "functionCode": "const order = $input.first().json;\nconst storeName = $('Lookup Store by Phone').first().json.name || 'Store';\nconst items = order.items || [];\n\nlet itemsList = items.map((item, i) => \n  `${i + 1}. ${item.product_name} x ${item.quantity} - Rs.${item.line_total}`\n).join('\\n');\n\nconst message = `Order Confirmed! \\n\\nOrder #${order.order_number || order.id}\\nStore: ${storeName}\\n\\nItems:\\n${itemsList}\\n\\nTotal: Rs.${order.total_amount}\\nExpected Delivery: ${order.estimated_delivery || 'Within 24-48 hours'}\\n\\nThank you for your order! Reply HELP for support.`;\n\nreturn [{\n  json: {\n    phone: $('Extract Message Data').first().json.store_phone,\n    message: message,\n    order_id: order.id\n  }\n}];"
+      },
+      "id": "wf004-format-confirmation",
+      "name": "Format Order Confirmation",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [3920, 260],
+      "notes": "Build a formatted order confirmation message with items, total, and ETA"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3003/notify/whatsapp",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "template",
+              "value": "order_confirmation"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "wf004-send-confirmation",
+      "name": "Send Order Confirmation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [4160, 260],
+      "notes": "Send order confirmation with summary and ETA to retailer via WhatsApp"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'ok', message: 'Webhook received' }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "wf004-respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [700, 280],
+      "notes": "Immediately respond 200 OK to WhatsApp webhook to prevent retries"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Error handler: send apologetic message with support number\nconst storePhone = $('Extract Message Data').first().json.store_phone;\nconst errorMessage = $input.first().json.error || 'We encountered an issue processing your order';\n\nreturn [{\n  json: {\n    phone: storePhone,\n    message: `We're sorry, we couldn't process your order right now. Our team has been notified.\\n\\nPlease try again in a few minutes, or call our support line: ${process.env.SUPPORT_PHONE || '+91-XXXXXXXXXX'}\\n\\nError ref: ${$('Extract Message Data').first().json.message_id}`,\n    error_details: errorMessage\n  }\n}];"
+      },
+      "id": "wf004-error-handler",
+      "name": "Error Handler",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [2960, 800],
+      "notes": "Handle any errors in the order pipeline and format an apologetic message"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3003/notify/whatsapp",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "template",
+              "value": "order_error"
+            },
+            {
+              "name": "priority",
+              "value": "high"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "wf004-send-error",
+      "name": "Send Error Message to Customer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [3200, 800],
+      "notes": "Send apologetic error message with support contact to retailer"
+    }
+  ],
+  "connections": {
+    "WhatsApp Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Message Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Message Data": {
+      "main": [
+        [
+          {
+            "node": "Has Message?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Message?": {
+      "main": [
+        [
+        ],
+        [
+          {
+            "node": "Lookup Store by Phone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Store by Phone": {
+      "main": [
+        [
+          {
+            "node": "Route by Message Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Message Type": {
+      "main": [
+        [
+          {
+            "node": "Parse Text Order (AI)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Download Audio from WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Download Image from WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Text Order (AI)": {
+      "main": [
+        [
+          {
+            "node": "Merge All Branches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Audio from WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Transcribe Audio (Whisper)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe Audio (Whisper)": {
+      "main": [
+        [
+          {
+            "node": "Parse Transcribed Audio Order",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Transcribed Audio Order": {
+      "main": [
+        [
+          {
+            "node": "Merge All Branches",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Download Image from WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "OCR / Vision Parse Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OCR / Vision Parse Image": {
+      "main": [
+        [
+          {
+            "node": "Parse Image-Extracted Order",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Image-Extracted Order": {
+      "main": [
+        [
+          {
+            "node": "Merge All Branches",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge All Branches": {
+      "main": [
+        [
+          {
+            "node": "Fuzzy SKU Matching",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fuzzy SKU Matching": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Match Confidence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Match Confidence": {
+      "main": [
+        [
+          {
+            "node": "All Matches Confident?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "All Matches Confident?": {
+      "main": [
+        [
+          {
+            "node": "Check Inventory Availability",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ask Clarification via WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Inventory Availability": {
+      "main": [
+        [
+          {
+            "node": "All Items Available?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "All Items Available?": {
+      "main": [
+        [
+          {
+            "node": "Create Order",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Substitution Suggestions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Substitution Suggestions": {
+      "main": [
+        [
+          {
+            "node": "Send Substitution Suggestions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Order": {
+      "main": [
+        [
+          {
+            "node": "Format Order Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Order Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Send Order Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Handler": {
+      "main": [
+        [
+          {
+            "node": "Send Error Message to Customer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "versionId": "wf-004-v1",
+  "meta": {
+    "instanceId": "opensalesai-local"
+  },
+  "tags": [
+    {
+      "name": "whatsapp",
+      "id": "tag-whatsapp"
+    },
+    {
+      "name": "orders",
+      "id": "tag-orders"
+    },
+    {
+      "name": "webhook",
+      "id": "tag-webhook"
+    }
+  ],
+  "pinData": {}
+}

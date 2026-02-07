@@ -1,0 +1,284 @@
+{
+  "name": "WF-003 Task Distribution via WhatsApp",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 30 1 * * *"
+            }
+          ]
+        }
+      },
+      "id": "wf003-cron-trigger",
+      "name": "Cron - 7AM IST Daily",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "notes": "Runs at 01:30 UTC = 07:00 AM IST daily to distribute morning tasks"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://localhost:3001/reps",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "is_active",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000,
+          "fullResponse": false
+        }
+      },
+      "id": "wf003-fetch-reps",
+      "name": "Fetch Active Reps",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [480, 300],
+      "notes": "GET all active sales reps from SFA service"
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "wf003-split-reps",
+      "name": "Loop Through Reps",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [720, 300],
+      "notes": "Process one rep at a time to avoid overwhelming the AI service"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=http://localhost:8000/tasks/{{ $json.id }}/today",
+        "options": {
+          "timeout": 30000,
+          "fullResponse": false
+        }
+      },
+      "id": "wf003-fetch-tasks",
+      "name": "Fetch Today's Tasks for Rep",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [960, 300],
+      "notes": "GET today's AI-generated tasks for the current rep"
+    },
+    {
+      "parameters": {
+        "functionCode": "const rep = $('Loop Through Reps').first().json;\nconst tasksResponse = $input.first().json;\nconst tasks = tasksResponse.tasks || [];\nconst repName = rep.name || 'Team Member';\nconst repPhone = rep.phone || '';\nconst taskCount = tasks.length;\n\nif (taskCount === 0) {\n  return [{\n    json: {\n      phone: repPhone,\n      rep_name: repName,\n      rep_id: rep.id,\n      task_count: 0,\n      message: `Good morning ${repName}! No new tasks for today. Great job staying on top of things! Check back later for updates.`,\n      skip_send: false\n    }\n  }];\n}\n\nlet taskList = '';\nfor (let i = 0; i < tasks.length; i++) {\n  const task = tasks[i];\n  const priority = task.priority >= 80 ? 'HIGH' : task.priority >= 50 ? 'MED' : 'LOW';\n  const storeName = task.store_name || 'Unknown Store';\n  const action = task.action || task.description || 'Follow up';\n  taskList += `${i + 1}. [${priority}] ${storeName}\\n   ${action}\\n`;\n  if (task.reasoning) {\n    taskList += `   Reason: ${task.reasoning}\\n`;\n  }\n  taskList += '\\n';\n}\n\nconst message = `Good morning ${repName}! Here are your ${taskCount} tasks for today:\\n\\n${taskList}\\nComplete tasks to earn reward points! Reply DONE <task#> when finished.`;\n\nreturn [{\n  json: {\n    phone: repPhone,\n    rep_name: repName,\n    rep_id: rep.id,\n    task_count: taskCount,\n    message: message,\n    skip_send: false\n  }\n}];"
+      },
+      "id": "wf003-format-message",
+      "name": "Format WhatsApp Message",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1200, 300],
+      "notes": "Build personalized task summary message for each rep with priority indicators"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3003/notify/whatsapp",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "rep_id",
+              "value": "={{ $json.rep_id }}"
+            },
+            {
+              "name": "template",
+              "value": "daily_task_summary"
+            },
+            {
+              "name": "channel",
+              "value": "whatsapp"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "wf003-send-whatsapp",
+      "name": "Send Task Summary via WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1440, 300],
+      "notes": "POST task summary to notification service for WhatsApp delivery"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Wait 1 second between sends to avoid rate limiting\nawait new Promise(resolve => setTimeout(resolve, 1000));\nreturn $input.all();"
+      },
+      "id": "wf003-rate-limit-delay",
+      "name": "Rate Limit Delay",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1680, 300],
+      "notes": "1-second delay between WhatsApp sends to respect API rate limits"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3001/monitoring/log",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "workflow",
+              "value": "WF-003-task-distribution"
+            },
+            {
+              "name": "status",
+              "value": "completed"
+            },
+            {
+              "name": "message",
+              "value": "Task distribution completed for all active reps"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "wf003-log-completion",
+      "name": "Log Distribution Complete",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [960, 520],
+      "notes": "Log that all task distributions have been sent"
+    }
+  ],
+  "connections": {
+    "Cron - 7AM IST Daily": {
+      "main": [
+        [
+          {
+            "node": "Fetch Active Reps",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Active Reps": {
+      "main": [
+        [
+          {
+            "node": "Loop Through Reps",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Through Reps": {
+      "main": [
+        [
+          {
+            "node": "Fetch Today's Tasks for Rep",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Distribution Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Today's Tasks for Rep": {
+      "main": [
+        [
+          {
+            "node": "Format WhatsApp Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format WhatsApp Message": {
+      "main": [
+        [
+          {
+            "node": "Send Task Summary via WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Task Summary via WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Rate Limit Delay",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rate Limit Delay": {
+      "main": [
+        [
+          {
+            "node": "Loop Through Reps",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "wf-003-v1",
+  "meta": {
+    "instanceId": "opensalesai-local"
+  },
+  "tags": [
+    {
+      "name": "tasks",
+      "id": "tag-tasks"
+    },
+    {
+      "name": "distribution",
+      "id": "tag-distribution"
+    },
+    {
+      "name": "whatsapp",
+      "id": "tag-whatsapp"
+    }
+  ]
+}

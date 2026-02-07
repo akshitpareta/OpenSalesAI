@@ -1,0 +1,372 @@
+{
+  "name": "WF-009 Stock-Out Alert System",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 4
+            }
+          ]
+        }
+      },
+      "id": "wf009-cron-trigger",
+      "name": "Cron - Every 4 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "notes": "Run stock-out prediction scan every 4 hours"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/predictions/stockout-scan",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "threshold",
+              "value": "0.5"
+            },
+            {
+              "name": "horizon_days",
+              "value": "7"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 120000,
+          "fullResponse": false
+        }
+      },
+      "id": "wf009-scan-stockouts",
+      "name": "Run Stock-Out Prediction Scan",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [480, 300],
+      "notes": "POST to AI service to run ML-based stock-out prediction across all stores"
+    },
+    {
+      "parameters": {
+        "functionCode": "const scanResult = $input.first().json;\nconst predictions = scanResult.predictions || [];\n\n// Filter to only high-probability stock-outs (> 0.7)\nconst highRisk = predictions.filter(p => p.stockout_probability > 0.7);\n\n// Sort by probability descending (most urgent first)\nhighRisk.sort((a, b) => b.stockout_probability - a.stockout_probability);\n\nif (highRisk.length === 0) {\n  return [{\n    json: {\n      has_alerts: false,\n      alert_count: 0,\n      message: 'No high-risk stock-outs detected in this scan cycle'\n    }\n  }];\n}\n\n// Return each alert as a separate item for the SplitInBatches node\nreturn highRisk.map(pred => ({\n  json: {\n    has_alerts: true,\n    alert_count: highRisk.length,\n    store_id: pred.store_id,\n    store_name: pred.store_name,\n    product_id: pred.product_id,\n    product_name: pred.product_name,\n    sku_code: pred.sku_code,\n    current_stock: pred.current_stock,\n    stockout_probability: pred.stockout_probability,\n    days_until_stockout: pred.days_until_stockout,\n    suggested_reorder_qty: pred.suggested_reorder_qty,\n    distributor_id: pred.distributor_id,\n    distributor_phone: pred.distributor_phone,\n    territory_id: pred.territory_id\n  }\n}));"
+      },
+      "id": "wf009-filter-alerts",
+      "name": "Filter High-Risk Alerts (>0.7)",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [720, 300],
+      "notes": "Filter predictions to only those with stockout_probability > 0.7, sort by urgency"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-has-alerts",
+              "leftValue": "={{ $json.has_alerts }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "wf009-check-alerts",
+      "name": "Any Alerts?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [960, 300],
+      "notes": "Only proceed if there are high-risk stock-out alerts to send"
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "wf009-split-alerts",
+      "name": "Loop Through Alerts",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1200, 200],
+      "notes": "Process one stock-out alert at a time"
+    },
+    {
+      "parameters": {
+        "functionCode": "const alert = $input.first().json;\n\nconst probability = Math.round(alert.stockout_probability * 100);\nconst urgency = alert.days_until_stockout <= 2 ? 'URGENT' : 'WARNING';\n\nconst message = `${urgency === 'URGENT' ? '🚨' : '⚠️'} Stock Alert\\n\\n` +\n  `Product: ${alert.product_name}\\n` +\n  `SKU: ${alert.sku_code}\\n` +\n  `Store: ${alert.store_name}\\n` +\n  `Current Stock: ${alert.current_stock} units\\n` +\n  `Stock-out Risk: ${probability}%\\n` +\n  `Est. Days Until Out: ${alert.days_until_stockout}\\n` +\n  `\\nSuggested Reorder: ${alert.suggested_reorder_qty} cases\\n` +\n  `\\nPlease arrange replenishment at the earliest.`;\n\nreturn [{\n  json: {\n    distributor_phone: alert.distributor_phone,\n    distributor_id: alert.distributor_id,\n    store_id: alert.store_id,\n    product_id: alert.product_id,\n    message: message,\n    urgency: urgency,\n    probability: probability\n  }\n}];"
+      },
+      "id": "wf009-format-alert",
+      "name": "Format Alert Message",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1440, 200],
+      "notes": "Format the stock-out alert message with product, store, and reorder details"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3003/notify/whatsapp",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $json.distributor_phone }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "template",
+              "value": "stockout_alert"
+            },
+            {
+              "name": "priority",
+              "value": "={{ $json.urgency === 'URGENT' ? 'high' : 'normal' }}"
+            },
+            {
+              "name": "context",
+              "value": "stockout_alert"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "wf009-send-alert",
+      "name": "Send Alert to Distributor",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1680, 200],
+      "notes": "Send stock-out alert to the distributor via WhatsApp"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Rate limit: wait 500ms between WhatsApp sends\nawait new Promise(resolve => setTimeout(resolve, 500));\nreturn $input.all();"
+      },
+      "id": "wf009-rate-limit",
+      "name": "Rate Limit Delay",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1920, 200],
+      "notes": "Brief delay between sends to respect WhatsApp rate limits"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3001/monitoring/log",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "workflow",
+              "value": "WF-009-stockout-alert"
+            },
+            {
+              "name": "status",
+              "value": "completed"
+            },
+            {
+              "name": "message",
+              "value": "Stock-out scan completed. No high-risk alerts found."
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "wf009-log-no-alerts",
+      "name": "Log - No Alerts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1200, 440],
+      "notes": "Log when scan completes with no high-risk stock-outs found"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3001/monitoring/log",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "workflow",
+              "value": "WF-009-stockout-alert"
+            },
+            {
+              "name": "status",
+              "value": "completed"
+            },
+            {
+              "name": "message",
+              "value": "Stock-out alert distribution completed"
+            },
+            {
+              "name": "alerts_sent",
+              "value": "={{ $('Filter High-Risk Alerts (>0.7)').first().json.alert_count }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "wf009-log-complete",
+      "name": "Log - Alerts Sent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1440, 440],
+      "notes": "Log completion after all stock-out alerts have been distributed"
+    }
+  ],
+  "connections": {
+    "Cron - Every 4 Hours": {
+      "main": [
+        [
+          {
+            "node": "Run Stock-Out Prediction Scan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Stock-Out Prediction Scan": {
+      "main": [
+        [
+          {
+            "node": "Filter High-Risk Alerts (>0.7)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter High-Risk Alerts (>0.7)": {
+      "main": [
+        [
+          {
+            "node": "Any Alerts?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any Alerts?": {
+      "main": [
+        [
+          {
+            "node": "Loop Through Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log - No Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Through Alerts": {
+      "main": [
+        [
+          {
+            "node": "Format Alert Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log - Alerts Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Alert Message": {
+      "main": [
+        [
+          {
+            "node": "Send Alert to Distributor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Alert to Distributor": {
+      "main": [
+        [
+          {
+            "node": "Rate Limit Delay",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rate Limit Delay": {
+      "main": [
+        [
+          {
+            "node": "Loop Through Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "wf-009-v1",
+  "meta": {
+    "instanceId": "opensalesai-local"
+  },
+  "tags": [
+    {
+      "name": "stockout",
+      "id": "tag-stockout"
+    },
+    {
+      "name": "alerts",
+      "id": "tag-alerts"
+    },
+    {
+      "name": "predictions",
+      "id": "tag-predictions"
+    }
+  ]
+}

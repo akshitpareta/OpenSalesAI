@@ -1,0 +1,51 @@
+id,name,channel_type,owner_name,owner_phone,lat,lng,address,city,msl_tier,credit_score
+S001,Sharma General Store,KIRANA,Rajesh Sharma,+919876543210,19.0760,72.8777,14 MG Road Andheri West,Mumbai,GOLD,A
+S002,Patel Kirana,KIRANA,Dinesh Patel,+919876543211,19.0330,72.8470,22 Linking Road Bandra,Mumbai,SILVER,B
+S003,Mumbai Mart,SUPERMARKET,Sunita Desai,+919876543212,19.1176,72.9060,8 LBS Marg Mulund,Mumbai,GOLD,A
+S004,Gupta Provision Store,KIRANA,Anil Gupta,+919876543213,19.0596,72.8295,56 Juhu Tara Road,Mumbai,BRONZE,C
+S005,New India Bazaar,GENERAL_TRADE,Priya Mehta,+919876543214,18.9548,72.8336,112 Colaba Causeway,Mumbai,SILVER,B
+S006,Reddy Super Mart,SUPERMARKET,Venkat Reddy,+919876543215,19.0462,72.8712,33 Turner Road Bandra,Mumbai,GOLD,A
+S007,Khan General Stores,KIRANA,Imran Khan,+919876543216,19.1663,72.8432,5 Borivali East Station Road,Mumbai,BRONZE,B
+S008,Deshmukh Groceries,KIRANA,Sanjay Deshmukh,+919876543217,19.0412,72.8561,87 Hill Road Bandra,Mumbai,SILVER,A
+S009,Chavan Corner Shop,KIRANA,Meena Chavan,+919876543218,19.1810,72.8495,19 IC Colony Borivali,Mumbai,BRONZE,C
+S010,Thakur Cash and Carry,WHOLESALE,Ramesh Thakur,+919876543219,19.2094,72.8539,Kandivali Industrial Estate,Mumbai,GOLD,A
+S011,Singh Kirana Store,KIRANA,Harpreet Singh,+919811111101,28.6139,77.2090,44 Connaught Place,Delhi,GOLD,A
+S012,Verma General Store,KIRANA,Suresh Verma,+919811111102,28.5672,77.2100,15 Lajpat Nagar Market,Delhi,SILVER,B
+S013,Delhi Supermart,SUPERMARKET,Neha Joshi,+919811111103,28.6353,77.2250,78 Chandni Chowk,Delhi,GOLD,A
+S014,Bansal Provision House,WHOLESALE,Vikram Bansal,+919811111104,28.6508,77.1856,22 Karol Bagh Market,Delhi,SILVER,B
+S015,Agarwal Corner Store,KIRANA,Ritu Agarwal,+919811111105,28.5494,77.2500,33 Greater Kailash I,Delhi,BRONZE,C
+S016,Tyagi Superstore,GENERAL_TRADE,Deepak Tyagi,+919811111106,28.6919,77.1497,67 Pitampura Main Road,Delhi,SILVER,B
+S017,Jain Groceries,KIRANA,Anita Jain,+919811111107,28.5785,77.3174,112 Noida Sector 18 Market,Delhi,BRONZE,B
+S018,Kumar Brothers Store,KIRANA,Ashok Kumar,+919811111108,28.6280,77.2159,45 Paharganj Main Bazaar,Delhi,GOLD,A
+S019,Saxena Mart,SUPERMARKET,Pooja Saxena,+919811111109,28.5355,77.2710,8 Saket Select City Walk Area,Delhi,SILVER,A
+S020,Yadav General Store,KIRANA,Rampal Yadav,+919811111110,28.7041,77.1025,55 Rohini Sector 3 Market,Delhi,BRONZE,C
+S021,Krishna Stores,KIRANA,Venkatesh Iyer,+919900001101,12.9716,77.5946,23 MG Road,Bangalore,GOLD,A
+S022,Srinivas Kirana,KIRANA,Srinivas Rao,+919900001102,12.9352,77.6245,14 Jayanagar 4th Block,Bangalore,SILVER,B
+S023,Bengaluru Supermart,SUPERMARKET,Lakshmi Devi,+919900001103,12.9783,77.6408,56 Indiranagar 100ft Road,Bangalore,GOLD,A
+S024,Hegde Provision Store,KIRANA,Ganesh Hegde,+919900001104,13.0358,77.5970,8 Malleshwaram 8th Cross,Bangalore,SILVER,B
+S025,HSR Groceries,KIRANA,Sunil Gowda,+919900001105,12.9121,77.6446,34 HSR Layout Sector 7,Bangalore,BRONZE,C
+S026,Whitefield Cash and Carry,WHOLESALE,Ravi Shankar,+919900001106,12.9698,77.7500,12 ITPL Main Road Whitefield,Bangalore,GOLD,A
+S027,Koramangala Corner,KIRANA,Meera Nair,+919900001107,12.9352,77.6245,67 Koramangala 5th Block,Bangalore,BRONZE,B
+S028,Electronic City Mart,GENERAL_TRADE,Prasad Murthy,+919900001108,12.8459,77.6603,22 Electronic City Phase 1,Bangalore,SILVER,B
+S029,Yelahanka Kirana,KIRANA,Savitha Kumari,+919900001109,13.1005,77.5963,9 Yelahanka New Town,Bangalore,BRONZE,C
+S030,Rajajinagar Stores,SUPERMARKET,Mohan Das,+919900001110,12.9912,77.5525,44 Rajajinagar 1st Block,Bangalore,SILVER,A
+S031,Murugan Stores,KIRANA,Murugan K,+919600001101,13.0827,80.2707,18 T Nagar Ranganathan Street,Chennai,GOLD,A
+S032,Lakshmi Provision,KIRANA,Lakshmi Sundaram,+919600001102,13.0569,80.2425,37 Adyar LB Road,Chennai,SILVER,B
+S033,Chennai Super Bazaar,SUPERMARKET,Karthik Raja,+919600001103,13.0878,80.2785,5 Anna Nagar 2nd Avenue,Chennai,GOLD,A
+S034,Ganesh General Store,KIRANA,Ganesh Babu,+919600001104,13.0674,80.2376,92 Mylapore Kutchery Road,Chennai,SILVER,B
+S035,Velachery Kirana,KIRANA,Saravanan P,+919600001105,12.9815,80.2180,11 Velachery Main Road,Chennai,BRONZE,C
+S036,OMR Wholesale Hub,WHOLESALE,Senthil Kumar,+919600001106,12.9516,80.2413,45 Thoraipakkam OMR,Chennai,GOLD,A
+S037,Tambaram Groceries,KIRANA,Ramesh Babu,+919600001107,12.9249,80.1000,22 Tambaram East High Road,Chennai,BRONZE,B
+S038,Porur Provision Store,GENERAL_TRADE,Vijay Anand,+919600001108,13.0382,80.1565,67 Porur Junction,Chennai,SILVER,B
+S039,Sholinganallur Corner,KIRANA,Deepa Venkat,+919600001109,12.9010,80.2279,8 Sholinganallur Main Road,Chennai,BRONZE,C
+S040,Nungambakkam Mart,SUPERMARKET,Priya Raman,+919600001110,13.0604,80.2425,33 Nungambakkam High Road,Chennai,SILVER,A
+S041,Reddy Kirana Store,KIRANA,Narasimha Reddy,+919100001101,17.3850,78.4867,12 Ameerpet Main Road,Hyderabad,GOLD,A
+S042,Begumpet Groceries,KIRANA,Fatima Begum,+919100001102,17.4445,78.4724,28 Begumpet Road,Hyderabad,SILVER,B
+S043,Hyderabad Supermart,SUPERMARKET,Sridhar Rao,+919100001103,17.4399,78.4983,45 Secunderabad MG Road,Hyderabad,GOLD,A
+S044,Banjara Provision House,WHOLESALE,Krishna Murthy,+919100001104,17.4156,78.4347,77 Banjara Hills Road No 1,Hyderabad,SILVER,B
+S045,Madhapur Corner Store,KIRANA,Lavanya Reddy,+919100001105,17.4483,78.3915,15 Madhapur Hitech City Road,Hyderabad,BRONZE,C
+S046,Kukatpally General Store,KIRANA,Raju Goud,+919100001106,17.4948,78.3996,33 Kukatpally Housing Board,Hyderabad,BRONZE,B
+S047,Charminar Bazaar,GENERAL_TRADE,Mohammed Aziz,+919100001107,17.3616,78.4747,56 Charminar Old City,Hyderabad,SILVER,B
+S048,ECIL Kirana,KIRANA,Padma Rao,+919100001108,17.4712,78.5690,8 ECIL Cross Roads,Hyderabad,BRONZE,C
+S049,Jubilee Hills Mart,SUPERMARKET,Sneha Reddy,+919100001109,17.4325,78.4072,22 Jubilee Hills Road No 36,Hyderabad,GOLD,A
+S050,Dilsukhnagar Store,KIRANA,Venkat Rao,+919100001110,17.3687,78.5247,44 Dilsukhnagar Main Road,Hyderabad,SILVER,B

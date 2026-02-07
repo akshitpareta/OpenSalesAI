@@ -1,0 +1,51 @@
+{
+  "name": "OpenSalesAI",
+  "displayName": "OpenSalesAI",
+  "expo": {
+    "name": "OpenSalesAI",
+    "slug": "opensalesai-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1E40AF"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1E40AF"
+      },
+      "package": "com.opensalesai.mobile",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
+        "VIBRATE",
+        "RECEIVE_BOOT_COMPLETED"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": ""
+        }
+      }
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.opensalesai.mobile",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "OpenSalesAI needs your location to validate store check-ins and track visits.",
+        "NSLocationAlwaysUsageDescription": "OpenSalesAI uses background location for route tracking.",
+        "NSCameraUsageDescription": "OpenSalesAI uses camera for barcode scanning and order photos."
+      }
+    },
+    "plugins": [
+      "react-native-maps"
+    ]
+  }
+}

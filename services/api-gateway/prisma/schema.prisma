@@ -1,0 +1,504 @@
+// =============================================================================
+// OpenSalesAI — Prisma Schema
+// =============================================================================
+// All 12 core tables for the CPG Route-to-Market platform.
+//
+// Conventions:
+//   - UUID primary keys (never auto-increment)
+//   - Soft delete via deleted_at timestamp
+//   - created_at / updated_at on every table
+//   - Multi-tenant: every query must scope to tenant_id or company_id
+//   - Proper indexes for query patterns
+// =============================================================================
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [uuid_ossp(map: "uuid-ossp")]
+}
+
+// =============================================================================
+// Enums
+// =============================================================================
+
+enum ChannelType {
+  KIRANA
+  SUPERMARKET
+  WHOLESALE
+  GENERAL_TRADE
+
+  @@map("channel_type")
+}
+
+enum MslTier {
+  GOLD
+  SILVER
+  BRONZE
+
+  @@map("msl_tier")
+}
+
+enum CreditScore {
+  A
+  B
+  C
+  D
+
+  @@map("credit_score")
+}
+
+enum SkillTier {
+  A
+  B
+  C
+
+  @@map("skill_tier")
+}
+
+enum OrderSource {
+  MANUAL
+  EB2B
+  WHATSAPP
+  VOICE
+
+  @@map("order_source")
+}
+
+enum TaskType {
+  PUSH
+  MSL_FILL
+  REACTIVATION
+  UPSELL
+  CROSS_SELL
+  NEW_LAUNCH
+
+  @@map("task_type")
+}
+
+enum TaskStatus {
+  PENDING
+  COMPLETED
+  SKIPPED
+  EXPIRED
+
+  @@map("task_status")
+}
+
+enum Eb2bOrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  DISPATCHED
+  DELIVERED
+  CANCELLED
+
+  @@map("eb2b_order_status")
+}
+
+enum Eb2bChannel {
+  WHATSAPP
+  PWA
+  APP
+  VOICE
+
+  @@map("eb2b_channel")
+}
+
+enum PredictionType {
+  DEMAND
+  STOCKOUT
+  ATTRITION
+  CREDIT
+
+  @@map("prediction_type")
+}
+
+enum TenantPlan {
+  FREE
+  STARTER
+  GROWTH
+  ENTERPRISE
+
+  @@map("tenant_plan")
+}
+
+// =============================================================================
+// 1. Tenants
+// =============================================================================
+
+model Tenant {
+  id        String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String      @db.VarChar(255)
+  slug      String      @unique @db.VarChar(100)
+  plan      TenantPlan  @default(FREE)
+  settings  Json        @default("{}")
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime?   @map("deleted_at") @db.Timestamptz(6)
+
+  companies Company[]
+
+  @@index([slug])
+  @@index([deletedAt])
+  @@map("tenants")
+}
+
+// =============================================================================
+// 2. Companies
+// =============================================================================
+
+model Company {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String    @map("tenant_id") @db.Uuid
+  name       String    @db.VarChar(255)
+  gstNumber  String?   @map("gst_number") @db.VarChar(20)
+  address    String?   @db.Text
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt  DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  stores       Store[]
+  products     Product[]
+  reps         Rep[]
+  transactions Transaction[]
+  tasks        Task[]
+  visits       Visit[]
+  ordersEb2b   OrderEb2b[]
+  predictions  Prediction[]
+  incentives   Incentive[]
+
+  @@index([tenantId])
+  @@index([deletedAt])
+  @@index([gstNumber])
+  @@map("companies")
+}
+
+// =============================================================================
+// 3. Stores
+// =============================================================================
+
+model Store {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId     String      @map("company_id") @db.Uuid
+  name          String      @db.VarChar(255)
+  channelType   ChannelType @map("channel_type")
+  ownerName     String      @map("owner_name") @db.VarChar(255)
+  ownerPhone    String      @map("owner_phone") @db.VarChar(20)
+  lat           Decimal     @db.Decimal(10, 7)
+  lng           Decimal     @db.Decimal(10, 7)
+  address       String      @db.Text
+  mslTier       MslTier     @default(BRONZE) @map("msl_tier")
+  creditScore   CreditScore @default(B) @map("credit_score")
+  assignedRepId String?     @map("assigned_rep_id") @db.Uuid
+  lastVisitDate DateTime?   @map("last_visit_date") @db.Timestamptz(6)
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime?   @map("deleted_at") @db.Timestamptz(6)
+
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  assignedRep  Rep?          @relation("AssignedStores", fields: [assignedRepId], references: [id], onDelete: SetNull)
+  transactions Transaction[]
+  tasks        Task[]
+  visits       Visit[]
+  ordersEb2b   OrderEb2b[]
+  predictions  Prediction[]
+
+  @@index([companyId])
+  @@index([assignedRepId])
+  @@index([channelType])
+  @@index([mslTier])
+  @@index([creditScore])
+  @@index([deletedAt])
+  @@index([lastVisitDate])
+  // Spatial index would be GiST in raw SQL; Prisma uses btree here.
+  // For production: add raw migration for GiST on (lat, lng).
+  @@index([lat, lng])
+  @@map("stores")
+}
+
+// =============================================================================
+// 4. Products
+// =============================================================================
+
+model Product {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId        String    @map("company_id") @db.Uuid
+  skuCode          String    @map("sku_code") @db.VarChar(50)
+  name             String    @db.VarChar(255)
+  category         String    @db.VarChar(100)
+  subCategory      String?   @map("sub_category") @db.VarChar(100)
+  mrp              Decimal   @db.Decimal(10, 2)
+  distributorPrice Decimal   @map("distributor_price") @db.Decimal(10, 2)
+  marginPct        Decimal   @map("margin_pct") @db.Decimal(5, 2)
+  packSize         String?   @map("pack_size") @db.VarChar(50)
+  shelfLifeDays    Int?      @map("shelf_life_days")
+  isFocus          Boolean   @default(false) @map("is_focus")
+  launchDate       DateTime? @map("launch_date") @db.Date
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt        DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  company          Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  transactionItems TransactionItem[]
+  predictions      Prediction[]
+
+  @@unique([companyId, skuCode], name: "unique_company_sku")
+  @@index([companyId])
+  @@index([category])
+  @@index([isFocus])
+  @@index([deletedAt])
+  @@map("products")
+}
+
+// =============================================================================
+// 5. Reps (Sales Representatives)
+// =============================================================================
+
+model Rep {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId     String    @map("company_id") @db.Uuid
+  name          String    @db.VarChar(255)
+  phone         String    @db.VarChar(20)
+  email         String?   @db.VarChar(255)
+  territory     String    @db.VarChar(100)
+  dailyTarget   Int       @default(10) @map("daily_target")
+  monthlyQuota  Decimal   @default(100000) @map("monthly_quota") @db.Decimal(12, 2)
+  pointsBalance Int       @default(0) @map("points_balance")
+  skillTier     SkillTier @default(B) @map("skill_tier")
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  company        Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  assignedStores Store[]       @relation("AssignedStores")
+  transactions   Transaction[]
+  tasks          Task[]
+  visits         Visit[]
+  incentives     Incentive[]
+
+  @@index([companyId])
+  @@index([territory])
+  @@index([isActive])
+  @@index([skillTier])
+  @@index([deletedAt])
+  @@map("reps")
+}
+
+// =============================================================================
+// 6. Transactions
+// =============================================================================
+
+model Transaction {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId         String      @map("store_id") @db.Uuid
+  repId           String      @map("rep_id") @db.Uuid
+  companyId       String      @map("company_id") @db.Uuid
+  totalValue      Decimal     @map("total_value") @db.Decimal(12, 2)
+  orderSource     OrderSource @map("order_source")
+  distributorId   String?     @map("distributor_id") @db.VarChar(100)
+  transactionDate DateTime    @map("transaction_date") @db.Timestamptz(6)
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt       DateTime?   @map("deleted_at") @db.Timestamptz(6)
+
+  store Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  storeRef Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  rep   Rep              @relation(fields: [repId], references: [id], onDelete: Cascade)
+  items TransactionItem[]
+
+  // BRIN index on transaction_date for time-range queries
+  // (Prisma doesn't support BRIN natively; add via raw migration)
+  @@index([companyId])
+  @@index([storeId])
+  @@index([repId])
+  @@index([transactionDate])
+  @@index([orderSource])
+  @@index([deletedAt])
+  @@map("transactions")
+}
+
+// =============================================================================
+// 7. Transaction Items
+// =============================================================================
+
+model TransactionItem {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  transactionId String   @map("transaction_id") @db.Uuid
+  productId     String   @map("product_id") @db.Uuid
+  quantity      Int
+  unitPrice     Decimal  @map("unit_price") @db.Decimal(10, 2)
+  lineTotal     Decimal  @map("line_total") @db.Decimal(12, 2)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  product     Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([transactionId])
+  @@index([productId])
+  @@map("transaction_items")
+}
+
+// =============================================================================
+// 8. Tasks (AI-Generated)
+// =============================================================================
+
+model Task {
+  id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId         String     @map("store_id") @db.Uuid
+  repId           String     @map("rep_id") @db.Uuid
+  companyId       String     @map("company_id") @db.Uuid
+  taskDate        DateTime   @map("task_date") @db.Date
+  taskType        TaskType   @map("task_type")
+  productIds      String[]   @map("product_ids")
+  priorityScore   Int        @default(50) @map("priority_score")
+  status          TaskStatus @default(PENDING)
+  completedAt     DateTime?  @map("completed_at") @db.Timestamptz(6)
+  rewardPoints    Int        @default(0) @map("reward_points")
+  aiReasoning     String?    @map("ai_reasoning") @db.Text
+  suggestedPitch  String?    @map("suggested_pitch") @db.Text
+  estimatedImpact Decimal?   @map("estimated_impact") @db.Decimal(12, 2)
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt       DateTime?  @map("deleted_at") @db.Timestamptz(6)
+
+  store     Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  rep       Rep        @relation(fields: [repId], references: [id], onDelete: Cascade)
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  incentive Incentive?
+
+  @@index([companyId])
+  @@index([repId])
+  @@index([storeId])
+  @@index([taskDate])
+  @@index([status])
+  @@index([taskType])
+  @@index([priorityScore])
+  @@index([deletedAt])
+  @@map("tasks")
+}
+
+// =============================================================================
+// 9. Visits
+// =============================================================================
+
+model Visit {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId         String    @map("store_id") @db.Uuid
+  repId           String    @map("rep_id") @db.Uuid
+  companyId       String    @map("company_id") @db.Uuid
+  checkInTime     DateTime  @map("check_in_time") @db.Timestamptz(6)
+  checkOutTime    DateTime? @map("check_out_time") @db.Timestamptz(6)
+  checkInLat      Decimal   @map("check_in_lat") @db.Decimal(10, 7)
+  checkInLng      Decimal   @map("check_in_lng") @db.Decimal(10, 7)
+  checkOutLat     Decimal?  @map("check_out_lat") @db.Decimal(10, 7)
+  checkOutLng     Decimal?  @map("check_out_lng") @db.Decimal(10, 7)
+  durationMinutes Int?      @map("duration_minutes")
+  photos          String[]  @default([])
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  store   Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  rep     Rep     @relation(fields: [repId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([storeId])
+  @@index([repId])
+  @@index([checkInTime])
+  @@index([deletedAt])
+  @@map("visits")
+}
+
+// =============================================================================
+// 10. Orders eB2B
+// =============================================================================
+
+model OrderEb2b {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId       String         @map("store_id") @db.Uuid
+  companyId     String         @map("company_id") @db.Uuid
+  items         Json           @default("[]")
+  totalValue    Decimal        @map("total_value") @db.Decimal(12, 2)
+  status        Eb2bOrderStatus @default(PENDING)
+  channel       Eb2bChannel
+  whatsappMsgId String?        @map("whatsapp_msg_id") @db.VarChar(255)
+  deliveryEta   DateTime?      @map("delivery_eta") @db.Timestamptz(6)
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime?      @map("deleted_at") @db.Timestamptz(6)
+
+  store   Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([storeId])
+  @@index([status])
+  @@index([channel])
+  @@index([whatsappMsgId])
+  @@index([deletedAt])
+  @@index([createdAt])
+  @@map("orders_eb2b")
+}
+
+// =============================================================================
+// 11. Predictions
+// =============================================================================
+
+model Prediction {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId        String         @map("store_id") @db.Uuid
+  productId      String         @map("product_id") @db.Uuid
+  companyId      String         @map("company_id") @db.Uuid
+  predictionType PredictionType @map("prediction_type")
+  predictedValue Decimal        @map("predicted_value") @db.Decimal(12, 4)
+  confidence     Decimal        @db.Decimal(5, 4)
+  predictionDate DateTime       @map("prediction_date") @db.Date
+  validUntil     DateTime       @map("valid_until") @db.Date
+  modelVersion   String         @map("model_version") @db.VarChar(50)
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  store   Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([storeId])
+  @@index([productId])
+  @@index([predictionType])
+  @@index([predictionDate])
+  @@index([validUntil])
+  @@map("predictions")
+}
+
+// =============================================================================
+// 12. Incentives
+// =============================================================================
+
+model Incentive {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  repId        String   @map("rep_id") @db.Uuid
+  companyId    String   @map("company_id") @db.Uuid
+  taskId       String   @unique @map("task_id") @db.Uuid
+  pointsEarned Int      @map("points_earned")
+  reason       String   @db.VarChar(500)
+  awardedAt    DateTime @map("awarded_at") @db.Timestamptz(6)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  rep     Rep     @relation(fields: [repId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  task    Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([repId])
+  @@index([awardedAt])
+  @@map("incentives")
+}

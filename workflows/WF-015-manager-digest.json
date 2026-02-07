@@ -1,0 +1,377 @@
+{
+  "name": "WF-015 Manager Daily Digest",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 30 14 * * *"
+            }
+          ]
+        }
+      },
+      "id": "wf015-cron-trigger",
+      "name": "Cron - 8PM IST Daily",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "notes": "Runs at 14:30 UTC = 08:00 PM IST daily — end-of-day manager digest"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://localhost:3001/analytics/daily-summary",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "date",
+              "value": "={{ $now.toISODate() }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000,
+          "fullResponse": false
+        }
+      },
+      "id": "wf015-fetch-summary",
+      "name": "Fetch Daily Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [480, 300],
+      "notes": "GET daily analytics summary from SFA service including all KPIs"
+    },
+    {
+      "parameters": {
+        "functionCode": "const data = $input.first().json;\n\n// Extract key metrics with safe defaults\nconst revenue = data.total_revenue || 0;\nconst revenueFormatted = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(revenue);\nconst prevDayRevenue = data.previous_day_revenue || 0;\nconst revenueChange = prevDayRevenue > 0 ? ((revenue - prevDayRevenue) / prevDayRevenue * 100).toFixed(1) : '0.0';\nconst revenueArrow = revenue >= prevDayRevenue ? '&#9650;' : '&#9660;';\nconst revenueColor = revenue >= prevDayRevenue ? '#22c55e' : '#ef4444';\n\nconst coverage = data.store_coverage_percent || 0;\nconst taskCompletion = data.task_completion_percent || 0;\nconst activeReps = data.active_reps || 0;\nconst totalReps = data.total_reps || 0;\nconst ordersToday = data.orders_today || 0;\nconst missedBeats = data.missed_beats || 0;\nconst activeAlerts = data.active_alerts || 0;\n\n// Top and bottom reps\nconst topReps = data.top_reps || [];\nconst bottomReps = data.bottom_reps || [];\n\nlet topRepsHtml = topReps.slice(0, 3).map((rep, i) => \n  `<tr><td style=\"padding:4px 8px;\">${i + 1}. ${rep.name}</td><td style=\"padding:4px 8px;text-align:right;color:#22c55e;\">${rep.tasks_completed} tasks | ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(rep.revenue)}</td></tr>`\n).join('');\n\nlet bottomRepsHtml = bottomReps.slice(0, 3).map((rep, i) => \n  `<tr><td style=\"padding:4px 8px;\">${i + 1}. ${rep.name}</td><td style=\"padding:4px 8px;text-align:right;color:#ef4444;\">${rep.tasks_completed} tasks | ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(rep.revenue)}</td></tr>`\n).join('');\n\nconst htmlEmail = `\n<!DOCTYPE html>\n<html>\n<head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"></head>\n<body style=\"font-family:'Segoe UI',Arial,sans-serif;background:#f1f5f9;padding:20px;margin:0;\">\n  <div style=\"max-width:600px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);\">\n    \n    <!-- Header -->\n    <div style=\"background:linear-gradient(135deg,#1e40af,#3b82f6);padding:24px 24px 20px;\">\n      <h1 style=\"color:#ffffff;margin:0;font-size:20px;\">Daily Sales Digest</h1>\n      <p style=\"color:#93c5fd;margin:4px 0 0;font-size:14px;\">${new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>\n    </div>\n    \n    <!-- KPI Cards -->\n    <div style=\"padding:20px 24px;\">\n      <table style=\"width:100%;border-collapse:collapse;\">\n        <tr>\n          <td style=\"padding:8px;width:50%;\">\n            <div style=\"background:#f0f9ff;border-radius:8px;padding:16px;text-align:center;\">\n              <div style=\"font-size:24px;font-weight:bold;color:#1e40af;\">${revenueFormatted}</div>\n              <div style=\"font-size:12px;color:#64748b;margin-top:4px;\">Today's Revenue <span style=\"color:${revenueColor};\">${revenueArrow} ${revenueChange}%</span></div>\n            </div>\n          </td>\n          <td style=\"padding:8px;width:50%;\">\n            <div style=\"background:#f0fdf4;border-radius:8px;padding:16px;text-align:center;\">\n              <div style=\"font-size:24px;font-weight:bold;color:#166534;\">${coverage}%</div>\n              <div style=\"font-size:12px;color:#64748b;margin-top:4px;\">Store Coverage</div>\n            </div>\n          </td>\n        </tr>\n        <tr>\n          <td style=\"padding:8px;width:50%;\">\n            <div style=\"background:#fefce8;border-radius:8px;padding:16px;text-align:center;\">\n              <div style=\"font-size:24px;font-weight:bold;color:#854d0e;\">${taskCompletion}%</div>\n              <div style=\"font-size:12px;color:#64748b;margin-top:4px;\">Task Completion</div>\n            </div>\n          </td>\n          <td style=\"padding:8px;width:50%;\">\n            <div style=\"background:#fdf2f8;border-radius:8px;padding:16px;text-align:center;\">\n              <div style=\"font-size:24px;font-weight:bold;color:#9d174d;\">${activeReps}/${totalReps}</div>\n              <div style=\"font-size:12px;color:#64748b;margin-top:4px;\">Active Reps</div>\n            </div>\n          </td>\n        </tr>\n      </table>\n      \n      <!-- Quick Stats -->\n      <div style=\"background:#f8fafc;border-radius:8px;padding:12px 16px;margin-top:12px;\">\n        <div style=\"display:flex;justify-content:space-between;font-size:13px;color:#475569;\">\n          <span>Orders Today: <strong>${ordersToday}</strong></span>\n          <span>Missed Beats: <strong style=\"color:${missedBeats > 0 ? '#ef4444' : '#22c55e'};\">${missedBeats}</strong></span>\n          <span>Active Alerts: <strong style=\"color:${activeAlerts > 0 ? '#f59e0b' : '#22c55e'};\">${activeAlerts}</strong></span>\n        </div>\n      </div>\n    </div>\n    \n    <!-- Top Performers -->\n    <div style=\"padding:0 24px 16px;\">\n      <h3 style=\"font-size:14px;color:#1e40af;margin:0 0 8px;\">Top Performers</h3>\n      <table style=\"width:100%;border-collapse:collapse;font-size:13px;\">\n        ${topRepsHtml || '<tr><td style=\"padding:4px 8px;color:#94a3b8;\">No data available</td></tr>'}\n      </table>\n    </div>\n    \n    <!-- Needs Attention -->\n    <div style=\"padding:0 24px 20px;\">\n      <h3 style=\"font-size:14px;color:#dc2626;margin:0 0 8px;\">Needs Attention</h3>\n      <table style=\"width:100%;border-collapse:collapse;font-size:13px;\">\n        ${bottomRepsHtml || '<tr><td style=\"padding:4px 8px;color:#94a3b8;\">All reps performing well</td></tr>'}\n      </table>\n    </div>\n    \n    <!-- Footer -->\n    <div style=\"background:#f1f5f9;padding:16px 24px;text-align:center;\">\n      <p style=\"font-size:12px;color:#94a3b8;margin:0;\">OpenSalesAI - AI-powered Route-to-Market Intelligence</p>\n      <p style=\"font-size:11px;color:#cbd5e1;margin:4px 0 0;\">This is an automated daily digest. View full dashboard for details.</p>\n    </div>\n  </div>\n</body>\n</html>`;\n\n// Also build WhatsApp text summary\nconst whatsappSummary = `Daily Sales Digest - ${new Date().toLocaleDateString('en-IN')}\\n\\n` +\n  `Revenue: ${revenueFormatted} (${revenueChange > 0 ? '+' : ''}${revenueChange}%)\\n` +\n  `Coverage: ${coverage}%\\n` +\n  `Tasks Done: ${taskCompletion}%\\n` +\n  `Active Reps: ${activeReps}/${totalReps}\\n` +\n  `Orders: ${ordersToday}\\n` +\n  `Missed Beats: ${missedBeats}\\n` +\n  `Alerts: ${activeAlerts}\\n\\n` +\n  `Top Reps: ${topReps.slice(0, 3).map(r => r.name).join(', ') || 'N/A'}\\n` +\n  `Needs Attention: ${bottomReps.slice(0, 3).map(r => r.name).join(', ') || 'All good'}\\n\\n` +\n  `View full dashboard for details.`;\n\nreturn [{\n  json: {\n    html_email: htmlEmail,\n    whatsapp_summary: whatsappSummary,\n    subject: `Daily Digest: ${revenueFormatted} Revenue | ${coverage}% Coverage | ${new Date().toLocaleDateString('en-IN')}`,\n    managers: data.managers || []\n  }\n}];"
+      },
+      "id": "wf015-build-digest",
+      "name": "Build HTML Email & WhatsApp Digest",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [720, 300],
+      "notes": "Transform daily summary data into a rich HTML email template and WhatsApp text summary"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://localhost:3001/users",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "role",
+              "value": "manager"
+            },
+            {
+              "name": "is_active",
+              "value": "true"
+            },
+            {
+              "name": "notifications_enabled",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000,
+          "fullResponse": false
+        }
+      },
+      "id": "wf015-fetch-managers",
+      "name": "Fetch Manager List",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [960, 300],
+      "notes": "Get all active managers who should receive the daily digest"
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "wf015-split-managers",
+      "name": "Loop Through Managers",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1200, 300],
+      "notes": "Process each manager one at a time"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3003/notify/email",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "to",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "name": "subject",
+              "value": "={{ $('Build HTML Email & WhatsApp Digest').first().json.subject }}"
+            },
+            {
+              "name": "html",
+              "value": "={{ $('Build HTML Email & WhatsApp Digest').first().json.html_email }}"
+            },
+            {
+              "name": "from",
+              "value": "digest@opensalesai.com"
+            },
+            {
+              "name": "category",
+              "value": "daily_digest"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "wf015-send-email",
+      "name": "Send Email Digest",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1440, 200],
+      "notes": "Send the HTML email digest to the manager"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3003/notify/whatsapp",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $('Build HTML Email & WhatsApp Digest').first().json.whatsapp_summary }}"
+            },
+            {
+              "name": "template",
+              "value": "manager_daily_digest"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "wf015-send-whatsapp",
+      "name": "Send WhatsApp Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1440, 400],
+      "notes": "Send a text version of the daily digest to manager's WhatsApp"
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch",
+        "output": "mixed",
+        "options": {}
+      },
+      "id": "wf015-merge-notifications",
+      "name": "Merge Notification Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [1680, 300],
+      "notes": "Wait for both email and WhatsApp to complete before moving to next manager"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Rate limit: wait 1 second between manager notifications\nawait new Promise(resolve => setTimeout(resolve, 1000));\nreturn $input.all();"
+      },
+      "id": "wf015-rate-limit",
+      "name": "Rate Limit Delay",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1920, 300],
+      "notes": "1-second delay between manager notifications"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3001/monitoring/log",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "workflow",
+              "value": "WF-015-manager-digest"
+            },
+            {
+              "name": "status",
+              "value": "completed"
+            },
+            {
+              "name": "message",
+              "value": "Daily digest sent to all managers"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "wf015-log-complete",
+      "name": "Log Digest Complete",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1440, 560],
+      "notes": "Log that the daily digest has been sent to all managers"
+    }
+  ],
+  "connections": {
+    "Cron - 8PM IST Daily": {
+      "main": [
+        [
+          {
+            "node": "Fetch Daily Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Daily Summary": {
+      "main": [
+        [
+          {
+            "node": "Build HTML Email & WhatsApp Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build HTML Email & WhatsApp Digest": {
+      "main": [
+        [
+          {
+            "node": "Fetch Manager List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Manager List": {
+      "main": [
+        [
+          {
+            "node": "Loop Through Managers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Through Managers": {
+      "main": [
+        [
+          {
+            "node": "Send Email Digest",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send WhatsApp Summary",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Digest Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email Digest": {
+      "main": [
+        [
+          {
+            "node": "Merge Notification Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send WhatsApp Summary": {
+      "main": [
+        [
+          {
+            "node": "Merge Notification Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Notification Results": {
+      "main": [
+        [
+          {
+            "node": "Rate Limit Delay",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rate Limit Delay": {
+      "main": [
+        [
+          {
+            "node": "Loop Through Managers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "wf-015-v1",
+  "meta": {
+    "instanceId": "opensalesai-local"
+  },
+  "tags": [
+    {
+      "name": "digest",
+      "id": "tag-digest"
+    },
+    {
+      "name": "manager",
+      "id": "tag-manager"
+    },
+    {
+      "name": "email",
+      "id": "tag-email"
+    },
+    {
+      "name": "whatsapp",
+      "id": "tag-whatsapp"
+    }
+  ]
+}

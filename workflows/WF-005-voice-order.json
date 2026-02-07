@@ -1,0 +1,516 @@
+{
+  "name": "WF-005 Voice Call Order Processing",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "webhooks/voice-order",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "id": "wf005-webhook-trigger",
+      "name": "Voice Call Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "webhookId": "voice-order-webhook",
+      "notes": "Receives webhook when AI voice agent completes an order-taking call"
+    },
+    {
+      "parameters": {
+        "functionCode": "const body = $input.first().json;\n\nreturn [{\n  json: {\n    call_id: body.call_id,\n    caller_phone: body.caller_phone,\n    recording_url: body.recording_url,\n    call_duration: body.call_duration_seconds,\n    language_detected: body.language || 'hi',\n    agent_transcript: body.agent_transcript || null,\n    call_status: body.status || 'completed',\n    store_phone: body.caller_phone\n  }\n}];"
+      },
+      "id": "wf005-extract-call-data",
+      "name": "Extract Call Data",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [480, 300],
+      "notes": "Parse the voice call webhook payload and extract call metadata"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'ok', message: 'Voice order webhook received' }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "wf005-respond-webhook",
+      "name": "Respond 200 OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [480, 140],
+      "notes": "Immediately acknowledge the webhook"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=http://localhost:3001/stores/by-phone/{{ $json.store_phone }}",
+        "options": {
+          "timeout": 10000,
+          "fullResponse": false
+        }
+      },
+      "id": "wf005-lookup-store",
+      "name": "Lookup Store by Phone",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [720, 300],
+      "notes": "Identify the store from the caller's phone number"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-has-transcript",
+              "leftValue": "={{ $('Extract Call Data').first().json.agent_transcript }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "wf005-has-transcript",
+      "name": "Has Agent Transcript?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [960, 300],
+      "notes": "Check if the voice agent already produced a transcript, or if we need to transcribe the recording"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/stt/transcribe",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "audio_url",
+              "value": "={{ $('Extract Call Data').first().json.recording_url }}"
+            },
+            {
+              "name": "language",
+              "value": "={{ $('Extract Call Data').first().json.language_detected }}"
+            },
+            {
+              "name": "model",
+              "value": "large-v3"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 120000,
+          "fullResponse": false
+        }
+      },
+      "id": "wf005-transcribe",
+      "name": "Transcribe Recording (Whisper)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1240, 420],
+      "notes": "Transcribe the call recording using Whisper STT with the detected language"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "transcript",
+              "value": "={{ $('Extract Call Data').first().json.agent_transcript }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "wf005-use-existing-transcript",
+      "name": "Use Existing Transcript",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.2,
+      "position": [1240, 180],
+      "notes": "Pass through the transcript already produced by the voice agent"
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch",
+        "output": "mixed",
+        "options": {}
+      },
+      "id": "wf005-merge-transcript",
+      "name": "Merge Transcript Sources",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [1500, 300],
+      "notes": "Merge the transcript from either the agent or from Whisper transcription"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/orders/parse",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{ $json.transcript }}"
+            },
+            {
+              "name": "store_id",
+              "value": "={{ $('Lookup Store by Phone').first().json.id }}"
+            },
+            {
+              "name": "store_name",
+              "value": "={{ $('Lookup Store by Phone').first().json.name }}"
+            },
+            {
+              "name": "source",
+              "value": "voice_call"
+            },
+            {
+              "name": "call_id",
+              "value": "={{ $('Extract Call Data').first().json.call_id }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000,
+          "fullResponse": false
+        }
+      },
+      "id": "wf005-parse-order",
+      "name": "Parse Order from Transcript (AI)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1740, 300],
+      "notes": "Send transcript to AI service for NLU order parsing"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3002/catalog/match",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "items",
+              "value": "={{ JSON.stringify($json.items) }}"
+            },
+            {
+              "name": "store_id",
+              "value": "={{ $('Lookup Store by Phone').first().json.id }}"
+            },
+            {
+              "name": "company_id",
+              "value": "={{ $('Lookup Store by Phone').first().json.company_id }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000,
+          "fullResponse": false
+        }
+      },
+      "id": "wf005-catalog-match",
+      "name": "Fuzzy SKU Matching",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1980, 300],
+      "notes": "Match parsed order items to product catalog using fuzzy matching"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3002/inventory/check",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "items",
+              "value": "={{ JSON.stringify($json.matches) }}"
+            },
+            {
+              "name": "store_id",
+              "value": "={{ $('Lookup Store by Phone').first().json.id }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000,
+          "fullResponse": false
+        }
+      },
+      "id": "wf005-check-inventory",
+      "name": "Check Inventory",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [2220, 300],
+      "notes": "Verify product availability at the distributor"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3002/orders",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "store_id",
+              "value": "={{ $('Lookup Store by Phone').first().json.id }}"
+            },
+            {
+              "name": "items",
+              "value": "={{ JSON.stringify($json.available_items || $json.items) }}"
+            },
+            {
+              "name": "source",
+              "value": "voice_call"
+            },
+            {
+              "name": "call_id",
+              "value": "={{ $('Extract Call Data').first().json.call_id }}"
+            },
+            {
+              "name": "company_id",
+              "value": "={{ $('Lookup Store by Phone').first().json.company_id }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000,
+          "fullResponse": false
+        }
+      },
+      "id": "wf005-create-order",
+      "name": "Create Order",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [2460, 300],
+      "notes": "Create the order in eB2B service"
+    },
+    {
+      "parameters": {
+        "functionCode": "const order = $input.first().json;\nconst storeName = $('Lookup Store by Phone').first().json.name || 'Store';\nconst storePhone = $('Extract Call Data').first().json.store_phone;\nconst items = order.items || [];\n\nlet itemsList = items.map((item, i) => \n  `${i + 1}. ${item.product_name} x ${item.quantity} - Rs.${item.line_total}`\n).join('\\n');\n\nconst message = `Your voice order has been confirmed!\\n\\nOrder #${order.order_number || order.id}\\nStore: ${storeName}\\n\\nItems:\\n${itemsList}\\n\\nTotal: Rs.${order.total_amount}\\nExpected Delivery: ${order.estimated_delivery || 'Within 24-48 hours'}\\n\\nThank you! Reply HELP for support.`;\n\nreturn [{\n  json: {\n    phone: storePhone,\n    message: message,\n    order_id: order.id\n  }\n}];"
+      },
+      "id": "wf005-format-confirmation",
+      "name": "Format Confirmation Message",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [2700, 300],
+      "notes": "Build order confirmation message for WhatsApp delivery"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3003/notify/whatsapp",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "template",
+              "value": "voice_order_confirmation"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "wf005-send-confirmation",
+      "name": "Send Confirmation via WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [2940, 300],
+      "notes": "Send order confirmation to the retailer via WhatsApp as a written backup"
+    }
+  ],
+  "connections": {
+    "Voice Call Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Call Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Respond 200 OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Call Data": {
+      "main": [
+        [
+          {
+            "node": "Lookup Store by Phone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Store by Phone": {
+      "main": [
+        [
+          {
+            "node": "Has Agent Transcript?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Agent Transcript?": {
+      "main": [
+        [
+          {
+            "node": "Use Existing Transcript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Transcribe Recording (Whisper)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Use Existing Transcript": {
+      "main": [
+        [
+          {
+            "node": "Merge Transcript Sources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe Recording (Whisper)": {
+      "main": [
+        [
+          {
+            "node": "Merge Transcript Sources",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Transcript Sources": {
+      "main": [
+        [
+          {
+            "node": "Parse Order from Transcript (AI)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Order from Transcript (AI)": {
+      "main": [
+        [
+          {
+            "node": "Fuzzy SKU Matching",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fuzzy SKU Matching": {
+      "main": [
+        [
+          {
+            "node": "Check Inventory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Inventory": {
+      "main": [
+        [
+          {
+            "node": "Create Order",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Order": {
+      "main": [
+        [
+          {
+            "node": "Format Confirmation Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Confirmation Message": {
+      "main": [
+        [
+          {
+            "node": "Send Confirmation via WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "wf-005-v1",
+  "meta": {
+    "instanceId": "opensalesai-local"
+  },
+  "tags": [
+    {
+      "name": "voice",
+      "id": "tag-voice"
+    },
+    {
+      "name": "orders",
+      "id": "tag-orders"
+    },
+    {
+      "name": "webhook",
+      "id": "tag-webhook"
+    }
+  ]
+}

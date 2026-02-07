@@ -1,0 +1,342 @@
+{
+  "name": "WF-007 Task Completion Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "webhooks/task-complete",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wf007-webhook-trigger",
+      "name": "Task Complete Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "webhookId": "task-complete-webhook",
+      "notes": "Receives POST when a sales rep marks a task as completed via app or WhatsApp"
+    },
+    {
+      "parameters": {
+        "functionCode": "const body = $input.first().json;\n\nreturn [{\n  json: {\n    task_id: body.task_id,\n    rep_id: body.rep_id,\n    completion_data: body.completion_data || {},\n    completed_at: new Date().toISOString(),\n    gps_lat: body.gps_lat || null,\n    gps_lng: body.gps_lng || null,\n    notes: body.notes || '',\n    photo_urls: body.photo_urls || [],\n    source: body.source || 'mobile_app'\n  }\n}];"
+      },
+      "id": "wf007-extract-data",
+      "name": "Extract Completion Data",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [480, 300],
+      "notes": "Parse and normalize the task completion payload"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'ok', message: 'Task completion received' }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "wf007-respond-webhook",
+      "name": "Respond 200 OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [480, 140],
+      "notes": "Immediately acknowledge the webhook"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=http://localhost:3001/tasks/{{ $json.task_id }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "COMPLETED"
+            },
+            {
+              "name": "completed_at",
+              "value": "={{ $json.completed_at }}"
+            },
+            {
+              "name": "completion_notes",
+              "value": "={{ $json.notes }}"
+            },
+            {
+              "name": "completion_gps_lat",
+              "value": "={{ $json.gps_lat }}"
+            },
+            {
+              "name": "completion_gps_lng",
+              "value": "={{ $json.gps_lng }}"
+            },
+            {
+              "name": "photo_urls",
+              "value": "={{ JSON.stringify($json.photo_urls) }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000,
+          "fullResponse": false
+        }
+      },
+      "id": "wf007-update-task",
+      "name": "Update Task Status to COMPLETED",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [720, 300],
+      "notes": "PUT to SFA service to mark task as COMPLETED with timestamp and GPS"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3001/incentives",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "rep_id",
+              "value": "={{ $('Extract Completion Data').first().json.rep_id }}"
+            },
+            {
+              "name": "task_id",
+              "value": "={{ $('Extract Completion Data').first().json.task_id }}"
+            },
+            {
+              "name": "action",
+              "value": "task_completion"
+            },
+            {
+              "name": "task_priority",
+              "value": "={{ $json.priority || 50 }}"
+            },
+            {
+              "name": "completed_at",
+              "value": "={{ $('Extract Completion Data').first().json.completed_at }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000,
+          "fullResponse": false
+        }
+      },
+      "id": "wf007-calculate-incentive",
+      "name": "Calculate & Award Incentive Points",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [980, 300],
+      "notes": "POST to incentives endpoint to calculate and award reward points based on task priority"
+    },
+    {
+      "parameters": {
+        "functionCode": "const incentiveResult = $input.first().json;\nconst repId = $('Extract Completion Data').first().json.rep_id;\nconst taskId = $('Extract Completion Data').first().json.task_id;\nconst pointsEarned = incentiveResult.points_earned || 10;\nconst totalPoints = incentiveResult.total_points || 0;\nconst streak = incentiveResult.streak_days || 0;\n\nlet message = `Great job! Task completed!\\n\\n`;\nmessage += `Points earned: +${pointsEarned} pts\\n`;\nmessage += `Total balance: ${totalPoints} pts\\n`;\n\nif (streak >= 3) {\n  message += `\\nStreak: ${streak} days in a row! Keep it up!`;\n}\n\nif (incentiveResult.badge_earned) {\n  message += `\\n\\nNew badge: ${incentiveResult.badge_earned}`;\n}\n\nreturn [{\n  json: {\n    rep_id: repId,\n    task_id: taskId,\n    title: 'Task Completed!',\n    message: message,\n    points_earned: pointsEarned,\n    total_points: totalPoints,\n    streak_days: streak\n  }\n}];"
+      },
+      "id": "wf007-format-congrats",
+      "name": "Format Congratulations Message",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1220, 300],
+      "notes": "Build a motivational congratulations message with points and streak info"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3003/notify/push",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "rep_id",
+              "value": "={{ $json.rep_id }}"
+            },
+            {
+              "name": "title",
+              "value": "={{ $json.title }}"
+            },
+            {
+              "name": "body",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "data",
+              "value": "={{ JSON.stringify({ task_id: $json.task_id, points_earned: $json.points_earned, action: 'task_complete' }) }}"
+            },
+            {
+              "name": "channel",
+              "value": "push"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "wf007-send-push",
+      "name": "Send Push Notification (Congrats)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1460, 300],
+      "notes": "Send congratulatory push notification via FCM to the rep's mobile device"
+    },
+    {
+      "parameters": {
+        "functionCode": "const repId = $('Extract Completion Data').first().json.rep_id;\nconst pointsEarned = $('Format Congratulations Message').first().json.points_earned;\nconst totalPoints = $('Format Congratulations Message').first().json.total_points;\n\nreturn [{\n  json: {\n    key: `leaderboard:daily:${new Date().toISOString().split('T')[0]}`,\n    member: repId,\n    score: totalPoints,\n    increment: pointsEarned,\n    action: 'ZINCRBY'\n  }\n}];"
+      },
+      "id": "wf007-build-leaderboard",
+      "name": "Build Leaderboard Update",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1700, 300],
+      "notes": "Prepare Redis sorted set update payload for the daily leaderboard"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3001/cache/leaderboard",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "={{ $json.key }}"
+            },
+            {
+              "name": "member",
+              "value": "={{ $json.member }}"
+            },
+            {
+              "name": "score",
+              "value": "={{ $json.score }}"
+            },
+            {
+              "name": "increment",
+              "value": "={{ $json.increment }}"
+            },
+            {
+              "name": "action",
+              "value": "={{ $json.action }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "id": "wf007-update-leaderboard",
+      "name": "Update Redis Leaderboard Cache",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1940, 300],
+      "notes": "POST to SFA service cache endpoint to update the Redis leaderboard sorted set"
+    }
+  ],
+  "connections": {
+    "Task Complete Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Completion Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Respond 200 OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Completion Data": {
+      "main": [
+        [
+          {
+            "node": "Update Task Status to COMPLETED",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Task Status to COMPLETED": {
+      "main": [
+        [
+          {
+            "node": "Calculate & Award Incentive Points",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate & Award Incentive Points": {
+      "main": [
+        [
+          {
+            "node": "Format Congratulations Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Congratulations Message": {
+      "main": [
+        [
+          {
+            "node": "Send Push Notification (Congrats)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Push Notification (Congrats)": {
+      "main": [
+        [
+          {
+            "node": "Build Leaderboard Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Leaderboard Update": {
+      "main": [
+        [
+          {
+            "node": "Update Redis Leaderboard Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "wf-007-v1",
+  "meta": {
+    "instanceId": "opensalesai-local"
+  },
+  "tags": [
+    {
+      "name": "tasks",
+      "id": "tag-tasks"
+    },
+    {
+      "name": "incentives",
+      "id": "tag-incentives"
+    },
+    {
+      "name": "webhook",
+      "id": "tag-webhook"
+    }
+  ]
+}

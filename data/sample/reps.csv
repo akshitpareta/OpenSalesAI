@@ -1,0 +1,11 @@
+id,name,phone,email,territory,daily_target,monthly_quota,skill_tier
+R001,Amit Sharma,+919876500001,amit.sharma@opensalesai.com,Mumbai-West,12,250000,A
+R002,Priya Patel,+919876500002,priya.patel@opensalesai.com,Mumbai-East,10,200000,B
+R003,Vikram Singh,+919811100001,vikram.singh@opensalesai.com,Delhi-South,12,250000,A
+R004,Neha Gupta,+919811100002,neha.gupta@opensalesai.com,Delhi-North,10,200000,B
+R005,Karthik Iyer,+919900000001,karthik.iyer@opensalesai.com,Bangalore-Central,12,250000,A
+R006,Lakshmi Nair,+919900000002,lakshmi.nair@opensalesai.com,Bangalore-South,8,150000,C
+R007,Suresh Rajan,+919600000001,suresh.rajan@opensalesai.com,Chennai-Central,10,200000,B
+R008,Deepa Krishnan,+919600000002,deepa.krishnan@opensalesai.com,Chennai-South,8,150000,C
+R009,Mohammed Aziz,+919100000001,mohammed.aziz@opensalesai.com,Hyderabad-Central,12,250000,A
+R010,Sneha Reddy,+919100000002,sneha.reddy@opensalesai.com,Hyderabad-West,10,200000,B

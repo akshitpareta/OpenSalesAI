@@ -1,0 +1,38 @@
+{
+  "name": "opensalesai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Open-source AI-powered Route-to-Market intelligence platform for CPG/FMCG",
+  "author": "Gosotek Technology Pvt. Ltd.",
+  "license": "MIT",
+  "workspaces": [
+    "apps/*",
+    "services/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "db:migrate": "npx prisma migrate dev --schema services/api-gateway/prisma/schema.prisma",
+    "db:seed": "npx ts-node scripts/seed-demo.ts",
+    "db:studio": "npx prisma studio --schema services/api-gateway/prisma/schema.prisma",
+    "docker:infra": "docker compose -f docker-compose.infra.yml up -d",
+    "docker:all": "docker compose up -d",
+    "docker:down": "docker compose down"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "typescript": "^5.7.0",
+    "prettier": "^3.4.0",
+    "eslint": "^9.17.0",
+    "@types/node": "^22.10.0",
+    "ts-node": "^10.9.2"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
+  },
+  "packageManager": "npm@11.6.2"
+}

@@ -1,0 +1,461 @@
+{
+  "name": "WF-014 Distributor Inventory Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "wf014-cron-trigger",
+      "name": "Cron - Every 6 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "notes": "Sync distributor inventory every 6 hours"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://localhost:3001/distributors",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "is_active",
+              "value": "true"
+            },
+            {
+              "name": "has_api_integration",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000,
+          "fullResponse": false
+        }
+      },
+      "id": "wf014-fetch-distributors",
+      "name": "Fetch Active Distributors",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [480, 300],
+      "notes": "Get all active distributors that have API integration configured"
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "wf014-split-distributors",
+      "name": "Loop Through Distributors",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [720, 300],
+      "notes": "Process each distributor one at a time"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.api_endpoint }}/inventory",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "updated_since",
+              "value": "={{ $now.minus({ hours: 6 }).toISO() }}"
+            },
+            {
+              "name": "format",
+              "value": "json"
+            }
+          ]
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "options": {
+          "timeout": 60000,
+          "fullResponse": false
+        }
+      },
+      "id": "wf014-pull-inventory",
+      "name": "Pull Inventory from Distributor API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [960, 300],
+      "notes": "GET current inventory levels from the distributor's external API"
+    },
+    {
+      "parameters": {
+        "functionCode": "const distributorData = $('Loop Through Distributors').first().json;\nconst inventoryData = $input.first().json;\nconst items = inventoryData.items || inventoryData.inventory || [];\n\n// Transform distributor inventory format to our internal format\nconst normalizedItems = items.map(item => ({\n  distributor_id: distributorData.id,\n  distributor_sku: item.sku || item.sku_code || item.product_code,\n  product_name: item.name || item.product_name,\n  available_qty: parseInt(item.available || item.qty || item.quantity || 0),\n  reserved_qty: parseInt(item.reserved || 0),\n  unit_price: parseFloat(item.price || item.unit_price || 0),\n  batch_number: item.batch || item.batch_number || null,\n  expiry_date: item.expiry || item.expiry_date || null,\n  warehouse_id: item.warehouse || item.warehouse_id || 'main',\n  last_updated: item.updated_at || new Date().toISOString()\n}));\n\n// Calculate summary stats for change detection\nconst totalItems = normalizedItems.length;\nconst totalQty = normalizedItems.reduce((sum, i) => sum + i.available_qty, 0);\nconst zeroStockItems = normalizedItems.filter(i => i.available_qty === 0).length;\n\nreturn [{\n  json: {\n    distributor_id: distributorData.id,\n    distributor_name: distributorData.name,\n    items: normalizedItems,\n    summary: {\n      total_items: totalItems,\n      total_quantity: totalQty,\n      zero_stock_count: zeroStockItems,\n      sync_timestamp: new Date().toISOString()\n    }\n  }\n}];"
+      },
+      "id": "wf014-transform-data",
+      "name": "Transform & Normalize Inventory",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1200, 300],
+      "notes": "Normalize distributor inventory data into our internal format for consistency"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3002/inventory/sync",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "distributor_id",
+              "value": "={{ $json.distributor_id }}"
+            },
+            {
+              "name": "items",
+              "value": "={{ JSON.stringify($json.items) }}"
+            },
+            {
+              "name": "sync_timestamp",
+              "value": "={{ $json.summary.sync_timestamp }}"
+            },
+            {
+              "name": "source",
+              "value": "distributor_api"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000,
+          "fullResponse": false
+        }
+      },
+      "id": "wf014-update-cache",
+      "name": "Update Local Inventory Cache",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1440, 300],
+      "notes": "POST normalized inventory to eB2B service to update local cache"
+    },
+    {
+      "parameters": {
+        "functionCode": "const syncResult = $input.first().json;\nconst summary = $('Transform & Normalize Inventory').first().json.summary;\n\n// Detect significant changes that warrant a stock-out recalculation\nconst previousTotalQty = syncResult.previous_total_quantity || 0;\nconst currentTotalQty = summary.total_quantity;\nconst changePercent = previousTotalQty > 0 \n  ? Math.abs((currentTotalQty - previousTotalQty) / previousTotalQty * 100) \n  : 100;\n\nconst significantChange = changePercent > 10 || summary.zero_stock_count > 5;\n\nreturn [{\n  json: {\n    distributor_id: $('Transform & Normalize Inventory').first().json.distributor_id,\n    distributor_name: $('Transform & Normalize Inventory').first().json.distributor_name,\n    significant_change: significantChange,\n    change_percent: changePercent,\n    zero_stock_count: summary.zero_stock_count,\n    items_synced: summary.total_items,\n    items_changed: syncResult.items_changed || 0\n  }\n}];"
+      },
+      "id": "wf014-detect-changes",
+      "name": "Detect Significant Changes",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1680, 300],
+      "notes": "Detect if inventory changes are significant enough to trigger stock-out recalculation"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-significant-change",
+              "leftValue": "={{ $json.significant_change }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "wf014-if-significant",
+      "name": "Significant Change?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1920, 300],
+      "notes": "Only trigger stock-out recalculation if inventory changed by >10% or >5 zero-stock items"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/predictions/stockout-scan",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "distributor_id",
+              "value": "={{ $json.distributor_id }}"
+            },
+            {
+              "name": "trigger",
+              "value": "inventory_change"
+            },
+            {
+              "name": "threshold",
+              "value": "0.6"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 120000,
+          "fullResponse": false
+        }
+      },
+      "id": "wf014-recalculate-stockout",
+      "name": "Trigger Stock-Out Recalculation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [2160, 200],
+      "notes": "Trigger immediate stock-out prediction recalculation for affected distributor"
+    },
+    {
+      "parameters": {
+        "functionCode": "// No significant change, just log and move on\nreturn $input.all();"
+      },
+      "id": "wf014-skip-recalc",
+      "name": "Skip Recalculation",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [2160, 400],
+      "notes": "No significant inventory change detected - skip recalculation"
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch",
+        "output": "mixed",
+        "options": {}
+      },
+      "id": "wf014-merge-branches",
+      "name": "Merge Branches",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [2400, 300],
+      "notes": "Merge after the significant-change check"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Brief delay between distributor syncs\nawait new Promise(resolve => setTimeout(resolve, 2000));\nreturn $input.all();"
+      },
+      "id": "wf014-delay",
+      "name": "Sync Delay",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [2640, 300],
+      "notes": "2-second delay between distributor syncs to avoid API overload"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3001/monitoring/log",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "workflow",
+              "value": "WF-014-distributor-sync"
+            },
+            {
+              "name": "status",
+              "value": "completed"
+            },
+            {
+              "name": "message",
+              "value": "Distributor inventory sync completed for all active distributors"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "wf014-log-complete",
+      "name": "Log Sync Complete",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [960, 520],
+      "notes": "Log completion of the full distributor sync cycle"
+    }
+  ],
+  "connections": {
+    "Cron - Every 6 Hours": {
+      "main": [
+        [
+          {
+            "node": "Fetch Active Distributors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Active Distributors": {
+      "main": [
+        [
+          {
+            "node": "Loop Through Distributors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Through Distributors": {
+      "main": [
+        [
+          {
+            "node": "Pull Inventory from Distributor API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Sync Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pull Inventory from Distributor API": {
+      "main": [
+        [
+          {
+            "node": "Transform & Normalize Inventory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform & Normalize Inventory": {
+      "main": [
+        [
+          {
+            "node": "Update Local Inventory Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Local Inventory Cache": {
+      "main": [
+        [
+          {
+            "node": "Detect Significant Changes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detect Significant Changes": {
+      "main": [
+        [
+          {
+            "node": "Significant Change?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Significant Change?": {
+      "main": [
+        [
+          {
+            "node": "Trigger Stock-Out Recalculation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skip Recalculation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Stock-Out Recalculation": {
+      "main": [
+        [
+          {
+            "node": "Merge Branches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip Recalculation": {
+      "main": [
+        [
+          {
+            "node": "Merge Branches",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Branches": {
+      "main": [
+        [
+          {
+            "node": "Sync Delay",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sync Delay": {
+      "main": [
+        [
+          {
+            "node": "Loop Through Distributors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "wf-014-v1",
+  "meta": {
+    "instanceId": "opensalesai-local"
+  },
+  "tags": [
+    {
+      "name": "distributor",
+      "id": "tag-distributor"
+    },
+    {
+      "name": "inventory",
+      "id": "tag-inventory"
+    },
+    {
+      "name": "sync",
+      "id": "tag-sync"
+    }
+  ]
+}
