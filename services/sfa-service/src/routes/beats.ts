@@ -209,7 +209,7 @@ const beatRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       select: { id: true },
     });
 
-    const foundIds = new Set(stores.map((s) => s.id));
+    const foundIds = new Set(stores.map((s: { id: string }) => s.id));
     const missingIds = body.storeIds.filter((sid) => !foundIds.has(sid));
 
     if (missingIds.length > 0) {
@@ -293,7 +293,7 @@ const beatRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         where: { id: { in: body.storeIds }, companyId, deletedAt: null },
         select: { id: true },
       });
-      const foundIds = new Set(stores.map((s) => s.id));
+      const foundIds = new Set(stores.map((s: { id: string }) => s.id));
       const missingIds = body.storeIds.filter((sid) => !foundIds.has(sid));
       if (missingIds.length > 0) {
         return reply.status(HTTP_STATUS.NOT_FOUND).send({

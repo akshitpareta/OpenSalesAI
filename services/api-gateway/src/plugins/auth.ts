@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import fp from 'fastify-plugin';
+// @ts-expect-error jose v6 is ESM-only; runtime handles this via tsx/bundler
 import * as jose from 'jose';
 
 export interface JWKSConfig {

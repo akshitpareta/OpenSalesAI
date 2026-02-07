@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { Prisma, PrismaClient } from '@prisma/client';
 import {
   HTTP_STATUS,
   DEFAULT_PAGE,
@@ -108,7 +109,11 @@ const orderRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       },
     });
 
-    const productMap = new Map(products.map((p) => [p.id, p]));
+    type ProductRecord = typeof products[number];
+    const productMap = new Map<string, ProductRecord>();
+    for (const p of products) {
+      productMap.set(p.id, p);
+    }
 
     // Validate all products exist
     const missingProducts = productIds.filter((pid) => !productMap.has(pid));
@@ -141,7 +146,7 @@ const orderRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
     const now = new Date();
 
     // Create transaction with items in a single Prisma transaction
-    const transaction = await fastify.prisma.$transaction(async (tx) => {
+    const transaction = await fastify.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const created = await tx.transaction.create({
         data: {
           companyId,

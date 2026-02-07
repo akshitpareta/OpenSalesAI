@@ -1,4 +1,4 @@
-import Fastify from 'fastify';
+import Fastify, { FastifyError } from 'fastify';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import swagger from '@fastify/swagger';
@@ -22,7 +22,6 @@ async function buildServer() {
           ? { target: 'pino-pretty', options: { colorize: true } }
           : undefined,
     },
-    requestId: true,
     genReqId: () => {
       const timestamp = Date.now().toString(36);
       const random = Math.random().toString(36).slice(2, 10);
@@ -47,8 +46,9 @@ async function buildServer() {
     timeWindow: RATE_LIMIT.AUTH_WINDOW_MS,
     keyGenerator: (request) => {
       // Rate limit by user_id if authenticated, otherwise by IP
-      return (request as Record<string, unknown>).user
-        ? ((request as Record<string, unknown>).user as { user_id: string }).user_id
+      const req = request as unknown as Record<string, unknown>;
+      return req.user
+        ? (req.user as { user_id: string }).user_id
         : request.ip;
     },
     errorResponseBuilder: (_request, context) => ({
@@ -117,7 +117,7 @@ async function buildServer() {
   });
 
   // Structured error handler
-  fastify.setErrorHandler(async (error, request, reply) => {
+  fastify.setErrorHandler(async (error: FastifyError, request, reply) => {
     request.log.error(
       {
         err: error,

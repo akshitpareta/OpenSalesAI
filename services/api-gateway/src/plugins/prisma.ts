@@ -17,7 +17,7 @@ const prismaPlugin: FastifyPluginAsync = async (fastify: FastifyInstance) => {
     ],
   });
 
-  prisma.$on('query', (e) => {
+  prisma.$on('query', (e: { query: string; params: string; duration: number }) => {
     fastify.log.debug({
       query: e.query,
       params: e.params,

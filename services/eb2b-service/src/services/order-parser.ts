@@ -1,5 +1,5 @@
 import { AI_SERVICE_URL, AI_ENDPOINTS } from '@opensalesai/shared';
-import type { OrderParseResult } from '@opensalesai/shared';
+import type { OrderParseResult, ParsedOrderItem } from '@opensalesai/shared';
 
 const AI_BASE = process.env['AI_SERVICE_URL'] || AI_SERVICE_URL;
 
@@ -80,7 +80,7 @@ function fallbackOrderParse(text: string): OrderParseResult {
       if (quantity > 0 && productName.length > 0) {
         // Avoid duplicates
         const exists = items.some(
-          (item) => item.product_name.toLowerCase() === productName.toLowerCase(),
+          (item: ParsedOrderItem) => item.product_name.toLowerCase() === productName.toLowerCase(),
         );
         if (!exists) {
           items.push({

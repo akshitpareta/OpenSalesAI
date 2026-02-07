@@ -1,4 +1,4 @@
-import Fastify from 'fastify';
+import Fastify, { FastifyError } from 'fastify';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import swagger from '@fastify/swagger';
@@ -181,7 +181,7 @@ async function buildServer() {
   await fastify.register(repRoutes);
 
   // Global error handler
-  fastify.setErrorHandler(async (error, request, reply) => {
+  fastify.setErrorHandler(async (error: FastifyError, request, reply) => {
     request.log.error({ err: error }, 'Request error');
 
     // Zod validation errors
