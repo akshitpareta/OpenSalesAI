@@ -33,13 +33,13 @@ class Settings(BaseSettings):
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:3001"]
 
     # ── Database (PostgreSQL + TimescaleDB) ──────────────────────────────
-    DATABASE_URL: str = "postgresql+asyncpg://opensales:opensales@localhost:5432/opensalesai"
+    DATABASE_URL: str = "postgresql+asyncpg://opensalesai:opensalesai_secret@localhost:5432/opensalesai"
     DATABASE_POOL_SIZE: int = 20
     DATABASE_MAX_OVERFLOW: int = 10
     DATABASE_ECHO: bool = False
 
     # ── Redis ────────────────────────────────────────────────────────────
-    REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_URL: str = "redis://:opensalesai_redis@localhost:6379/0"
     REDIS_CACHE_TTL: int = 3600  # seconds
 
     # ── Qdrant (Vector DB) ───────────────────────────────────────────────
@@ -51,8 +51,8 @@ class Settings(BaseSettings):
 
     # ── MinIO (Object Storage) ───────────────────────────────────────────
     MINIO_URL: str = "http://localhost:9000"
-    MINIO_ACCESS_KEY: str = "minioadmin"
-    MINIO_SECRET_KEY: str = "minioadmin"
+    MINIO_ACCESS_KEY: str = "opensalesai"
+    MINIO_SECRET_KEY: str = "opensalesai_minio_secret"
     MINIO_BUCKET_MODELS: str = "ml-models"
     MINIO_BUCKET_AUDIO: str = "audio-files"
 
@@ -106,6 +106,16 @@ class Settings(BaseSettings):
     # ── Stockout Prediction ──────────────────────────────────────────────
     STOCKOUT_THRESHOLD: float = 0.7  # probability threshold for alerts
     STOCKOUT_SCAN_BATCH_SIZE: int = 100
+
+    def model_post_init(self, __context: object) -> None:
+        """Ensure DATABASE_URL uses asyncpg driver."""
+        url = self.DATABASE_URL
+        if url.startswith("postgresql://"):
+            url = url.split("?")[0]
+            object.__setattr__(
+                self, "DATABASE_URL",
+                url.replace("postgresql://", "postgresql+asyncpg://", 1),
+            )
 
     @computed_field  # type: ignore[prop-decorator]
     @property
