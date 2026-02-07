@@ -28,21 +28,22 @@ httpx==0.28.1
 
 # Embeddings
 sentence-transformers==3.3.1
-torch==2.5.1
+torch==2.6.0
 transformers==4.47.1
 
 # ML Models
 scikit-learn==1.6.0
 xgboost==2.1.3
-prophet==1.1.6
-ortools==9.11.4210
+prophet==1.3.0
+ortools==9.12.4544
 pandas==2.2.3
 numpy==2.2.1
 
 # Speech
-faster-whisper==1.1.0
+faster-whisper==1.2.1
 gTTS==2.5.4
 pydub==0.25.1
+audioop-lts==0.2.2
 
 # Auth
 PyJWT==2.10.1

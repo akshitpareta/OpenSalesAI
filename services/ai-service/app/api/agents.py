@@ -137,9 +137,9 @@ async def chat(
 
 @router.post("/stt", response_model=STTResponse)
 async def speech_to_text(
+    user: CurrentUser,
     audio: UploadFile = File(...),
     language: str = Form(default="hi"),
-    user: CurrentUser = Depends(),
 ) -> STTResponse:
     """Transcribe audio to text using Whisper.
 

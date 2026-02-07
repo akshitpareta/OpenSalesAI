@@ -99,6 +99,51 @@ const navItems: NavItem[] = [
   },
 ];
 
+const aiNavItems: NavItem[] = [
+  {
+    label: 'AI Chat',
+    href: '/ai-chat',
+    icon: (
+      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.5}
+          d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+        />
+      </svg>
+    ),
+  },
+  {
+    label: 'Voice Orders',
+    href: '/voice',
+    icon: (
+      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.5}
+          d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+        />
+      </svg>
+    ),
+  },
+  {
+    label: 'Workflows',
+    href: '/workflows',
+    icon: (
+      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.5}
+          d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm0 8a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zm10 0a1 1 0 011-1h4a1 1 0 011 1v6a1 1 0 01-1 1h-4a1 1 0 01-1-1v-6z"
+        />
+      </svg>
+    ),
+  },
+];
+
 export const Sidebar: React.FC = () => {
   const pathname = usePathname();
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
@@ -142,6 +187,32 @@ export const Sidebar: React.FC = () => {
       {/* Navigation */}
       <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto scrollbar-thin">
         {navItems.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={cn(
+              'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+              isActive(item.href)
+                ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
+                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200'
+            )}
+            title={sidebarCollapsed ? item.label : undefined}
+          >
+            <span className="flex-shrink-0">{item.icon}</span>
+            {!sidebarCollapsed && <span>{item.label}</span>}
+          </Link>
+        ))}
+
+        {/* AI & Automation Section */}
+        <div className="pt-4 pb-1">
+          {!sidebarCollapsed && (
+            <p className="px-3 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+              AI & Automation
+            </p>
+          )}
+          {sidebarCollapsed && <hr className="border-gray-200 dark:border-gray-700" />}
+        </div>
+        {aiNavItems.map((item) => (
           <Link
             key={item.href}
             href={item.href}
